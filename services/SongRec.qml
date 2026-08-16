@@ -47,12 +47,16 @@ Singleton {
     function handleRecognition(jsonText) {
         try {
             var obj = JSON.parse(jsonText)
-            root.recognizedTrack = {
-                title: obj.track.title,
-                subtitle: obj.track.subtitle,
-                url: obj.track.url
+            if (obj && obj.track && obj.track.title) {
+                root.recognizedTrack = {
+                    title: obj.track.title ?? "",
+                    subtitle: obj.track.subtitle ?? "",
+                    url: obj.track.url ?? ""
+                }
+                musicReconizedProc.running = true
+            } else {
+                throw new Error("No track data found");
             }
-            musicReconizedProc.running = true
         } catch(e) {
             Quickshell.execDetached(["notify-send", Translation.tr("Couldn't recognize music"), Translation.tr("Perhaps what you're listening to is too niche"), "-a", "Shell"])
         }

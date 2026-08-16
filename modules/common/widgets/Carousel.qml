@@ -52,7 +52,7 @@ Item {
         clip: true
         interactive: root.dragEnabled
         snapMode: ListView.SnapOneItem
-        highlightRangeMode: ListView.StrictlyEnforceRange
+        highlightRangeMode: ListView.ApplyRange
         preferredHighlightBegin: 0
         preferredHighlightEnd: 0
         highlightMoveDuration: 250

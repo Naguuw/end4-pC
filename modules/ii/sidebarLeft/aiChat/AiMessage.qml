@@ -21,6 +21,7 @@ Rectangle {
     property bool editing: false
 
     property list<var> messageBlocks: StringUtils.splitMarkdownBlocks(root.messageData?.content)
+    readonly property var attachedFilePaths: (root.messageData?.localFilePaths && root.messageData.localFilePaths.length > 0) ? root.messageData.localFilePaths : []
 
     anchors.left: parent?.left
     anchors.right: parent?.right
@@ -146,9 +147,10 @@ Rectangle {
                             elide: Text.ElideRight
                             font.pixelSize: Appearance.font.pixelSize.normal
                             color: Appearance.m3colors.m3onSecondaryContainer
-                            text: messageData?.role == 'assistant' ? Ai.models[messageData?.model].name :
-                                (messageData?.role == 'user' && SystemInfo.username) ? SystemInfo.username :
-                                Translation.tr("Interface")
+                            text: messageData?.role === 'assistant' 
+                                ? (Config.options?.ai?.systemPromptPath ? Config.options.ai.systemPromptPath.split("/").pop().replace(".md", "") : (Ai.models[messageData?.model]?.name ?? Translation.tr("Assistant")))
+                                : (messageData?.role === 'user' ? (Config.options?.profile?.displayName || SystemInfo.username) 
+                                : Translation.tr("Interface"))
                         }
                     }
                 }
@@ -254,12 +256,19 @@ Rectangle {
             }
         }
 
-        Loader {
+        ColumnLayout {
             Layout.fillWidth: true
-            active: root.messageData?.localFilePath && root.messageData?.localFilePath.length > 0
-            sourceComponent: AttachedFileIndicator {
-                filePath: root.messageData?.localFilePath
-                canRemove: false
+            spacing: 5
+            visible: root.attachedFilePaths.length > 0
+
+            Repeater {
+                model: root.attachedFilePaths
+                delegate: AttachedFileIndicator {
+                    Layout.fillWidth: true
+                    showImagePreview: root.attachedFilePaths.length === 1
+                    filePath: modelData
+                    canRemove: false
+                }
             }
         }
 

@@ -56,6 +56,7 @@ Singleton {
         property int output: -1
         property int total: -1
     }
+    readonly property bool isResponding: requester.running || commandExecutionProc.running
 
     function idForMessage(message) {
         // Generate a unique ID using timestamp and random value
@@ -72,6 +73,8 @@ Singleton {
     property list<var> savedChats: []
 
     property var promptSubstitutions: {
+        "{USER}": Config.options.profile.displayName || SystemInfo.username,
+        "{CHAR}": Config.options?.ai?.systemPromptPath ? Config.options.ai.systemPromptPath.split("/").pop().replace(".md", "") : (models[currentModelId]?.name ?? "Assistant"),
         "{DISTRO}": SystemInfo.distroName,
         "{DATETIME}": `${DateTime.time}, ${DateTime.collapsedCalendarFormat}`,
         "{WINDOWCLASS}": ToplevelManager.activeToplevel?.appId ?? "Unknown",
@@ -281,6 +284,19 @@ Singleton {
             "key_get_description": Translation.tr("**Pricing**: free. Data used for training.\n\n**Instructions**: Log into Google account, allow AI Studio to create Google Cloud project or whatever it asks, go back and click Get API key"),
             "api_format": "gemini",
         }),
+        "gemma-4-31b-it": aiModelComponent.createObject(this, {
+            "name": "Gemma 4 31B IT",
+            "icon": "google-gemini-symbolic",
+            "description": Translation.tr("Online | Google's model LLM."),
+            "homepage": "https://aistudio.google.com",
+            "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:streamGenerateContent",
+            "model": "gemma-4-31b-it",
+            "requires_key": true,
+            "key_id": "gemini",
+            "key_get_link": "https://aistudio.google.com/app/apikey",
+            "key_get_description": Translation.tr("**Pricing**: free. Data used for training.\n\n**Instructions**: Log into Google account, allow AI Studio to create Google Cloud project or whatever it asks, go back and click Get API key"),
+            "api_format": "gemini",
+        }),
         "mistral-medium-3": aiModelComponent.createObject(this, {
             "name": "Mistral Medium 3",
             "icon": "mistral-symbolic",
@@ -321,7 +337,8 @@ Singleton {
     }
 
     property string requestScriptFilePath: "/tmp/quickshell/ai/request.sh"
-    property string pendingFilePath: ""
+    property string pendingFilePath: pendingFilePaths[0] ?? ""
+    property var pendingFilePaths: []
 
     Component.onCompleted: {
         setModel(currentModelId, false, false); // Do necessary setup for model
@@ -444,23 +461,26 @@ Singleton {
     }
 
     function loadPrompt(filePath) {
+        Config.options.ai.systemPromptPath = filePath;
         promptLoader.path = "" // Unload
         promptLoader.path = filePath; // Load
         promptLoader.reload();
     }
 
-    function addMessage(message, role) {
-        if (message.length === 0) return;
+    function addMessage(message, role, localFilePaths = []) {
+        if (message.length === 0) return null;
         const aiMessage = aiMessageComponent.createObject(root, {
             "role": role,
             "content": message,
             "rawContent": message,
+            "localFilePaths": (localFilePaths && localFilePaths.length > 0) ? [...localFilePaths] : [],
             "thinking": false,
             "done": true,
         });
         const id = idForMessage(aiMessage);
         root.messageIDs = [...root.messageIDs, id];
         root.messageByID[id] = aiMessage;
+        return aiMessage;
     }
 
     function removeMessage(index) {
@@ -573,6 +593,15 @@ Singleton {
         root.tokenCount.total = -1;
     }
 
+    function stopResponse() {
+        if (requester.running) {
+            requester.running = false;
+        }
+        if (commandExecutionProc.running) {
+            commandExecutionProc.running = false;
+        }
+    }
+
     FileView {
         id: requesterScriptFile
     }
@@ -609,7 +638,14 @@ Singleton {
             const endpoint = root.currentApiStrategy.buildEndpoint(model);
             const messageArray = root.messageIDs.map(id => root.messageByID[id]);
             const filteredMessageArray = messageArray.filter(message => message.role !== Ai.interfaceRole);
-            const data = root.currentApiStrategy.buildRequestData(model, filteredMessageArray, root.systemPrompt, root.temperature, root.tools[model.api_format][root.currentTool], root.pendingFilePath);
+            /* Find active file paths for current user message */
+            const lastUserMsg = filteredMessageArray.slice().reverse().find(msg => msg.role === "user");
+            let activeFilePaths = (lastUserMsg && lastUserMsg.localFilePaths && lastUserMsg.localFilePaths.length > 0) ? [...lastUserMsg.localFilePaths] : [];
+            if (activeFilePaths.length === 0 && root.pendingFilePaths && root.pendingFilePaths.length > 0) {
+                activeFilePaths = [...root.pendingFilePaths];
+            }
+
+            const data = root.currentApiStrategy.buildRequestData(model, filteredMessageArray, root.systemPrompt, root.temperature, root.tools[model.api_format][root.currentTool], activeFilePaths);
             // console.log("[Ai] Request data: ", JSON.stringify(data, null, 2));
 
             let requestHeaders = {
@@ -646,10 +682,8 @@ Singleton {
 
             /* Create extra setup when there's an attached file */
             let scriptFileSetupContent = ""
-            if (root.pendingFilePath && root.pendingFilePath.length > 0) {
-                requester.message.localFilePath = root.pendingFilePath;
-                scriptFileSetupContent = requester.currentStrategy.buildScriptFileSetup(root.pendingFilePath);
-                root.pendingFilePath = ""
+            if (activeFilePaths && activeFilePaths.length > 0) {
+                scriptFileSetupContent = requester.currentStrategy.buildScriptFileSetup(activeFilePaths);
             }
 
             /* Create command string */
@@ -661,7 +695,7 @@ Singleton {
                 + "\n"
             
             /* Send the request */
-            const scriptContent = requester.currentStrategy.finalizeScriptContent(scriptShebang + scriptFileSetupContent + scriptRequestContent)
+            const scriptContent = requester.currentStrategy.finalizeScriptContent(scriptShebang + scriptFileSetupContent + scriptRequestContent, activeFilePaths)
             const shellScriptPath = CF.FileUtils.trimFileProtocol(root.requestScriptFilePath)
             requesterScriptFile.path = Qt.resolvedUrl(shellScriptPath)
             requesterScriptFile.setText(scriptContent)
@@ -714,17 +748,50 @@ Singleton {
             if (requester.message.content.includes("API key not valid")) {
                 root.addApiKeyAdvice(models[requester.message.model]);
             }
+
+            // For Gemma Error 500
+            if (requester.message.content.includes("**Error 500**: Internal error encountered.") || requester.message.content.includes("**Error 503**: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.") || requester.message.content.includes("The model output could not be generated")) {
+                root.regenerate(root.messageIDs.length - 1);
+            }
         }
     }
 
     function sendUserMessage(message) {
         if (message.length === 0) return;
-        root.addMessage(message, "user");
+        const currentPendingFiles = (root.pendingFilePaths && root.pendingFilePaths.length > 0) ? [...root.pendingFilePaths] : [];
+        root.clearPendingFiles();
+        root.addMessage(message, "user", currentPendingFiles);
         requester.makeRequest();
     }
 
     function attachFile(filePath: string) {
-        root.pendingFilePath = CF.FileUtils.trimFileProtocol(filePath);
+        if (!filePath || filePath.trim().length === 0) {
+            root.clearPendingFiles();
+            return;
+        }
+        const tokens = filePath.split(/[\r\n,]+/);
+        let newPaths = [...root.pendingFilePaths];
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i].trim();
+            if (token.length === 0) continue;
+            const clean = CF.FileUtils.trimFileProtocol(decodeURIComponent(token));
+            if (clean.length > 0 && newPaths.indexOf(clean) === -1) {
+                newPaths.push(clean);
+            }
+        }
+        root.pendingFilePaths = newPaths;
+    }
+
+    function removePendingFile(index: int) {
+        if (index >= 0 && index < root.pendingFilePaths.length) {
+            let newPaths = [...root.pendingFilePaths];
+            newPaths.splice(index, 1);
+            root.pendingFilePaths = newPaths;
+        }
+    }
+
+    function clearPendingFiles() {
+        root.pendingFilePaths = [];
     }
 
     function regenerate(messageIndex) {
@@ -841,6 +908,8 @@ Singleton {
                 "fileMimeType": message.fileMimeType,
                 "fileUri": message.fileUri,
                 "localFilePath": message.localFilePath,
+                "localFilePaths": message.localFilePaths ?? [],
+                "fileInfos": message.fileInfos ?? [],
                 "model": message.model,
                 "thinking": false,
                 "done": true,
@@ -897,6 +966,8 @@ Singleton {
                     "fileMimeType": message.fileMimeType,
                     "fileUri": message.fileUri,
                     "localFilePath": message.localFilePath,
+                    "localFilePaths": message.localFilePaths ?? (message.localFilePath ? [message.localFilePath] : []),
+                    "fileInfos": message.fileInfos ?? [],
                     "model": message.model,
                     "thinking": message.thinking,
                     "done": message.done,

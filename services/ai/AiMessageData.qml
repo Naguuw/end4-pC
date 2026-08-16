@@ -10,6 +10,8 @@ QtObject {
     property string fileMimeType
     property string fileUri
     property string localFilePath
+    property var localFilePaths: []
+    property var fileInfos: []
     property string model
     property bool thinking: true
     property bool done: false

@@ -5,8 +5,8 @@ ApiStrategy {
     readonly property string apiKeyEnvVarName: "API_KEY"
     readonly property string fileUriVarName: "file_uri"
     readonly property string fileMimeTypeVarName: "MIME_TYPE"
-    readonly property string fileUriSubstitutionString: "{{ fileUriVarName }}"
-    readonly property string fileMimeTypeSubstitutionString: "{{ fileMimeTypeVarName }}"
+    readonly property string fileUriSubstitutionString: "{{ " + fileUriVarName + " }}"
+    readonly property string fileMimeTypeSubstitutionString: "{{ " + fileMimeTypeVarName + " }}"
     property string buffer: ""
     
     function buildEndpoint(model: AiModel): string {
@@ -15,9 +15,14 @@ ApiStrategy {
         return result;
     }
 
-    function buildRequestData(model: AiModel, messages, systemPrompt: string, temperature: real, tools: list<var>, filePath: string) {
+    function isGemmaModel(model: AiModel): bool {
+        return model.model.toLowerCase().startsWith("gemma");
+    }
+
+    function buildRequestData(model: AiModel, messages, systemPrompt: string, temperature: real, tools: list<var>, filePaths: var) {
+        const paths = (typeof filePaths === "string") ? (filePaths.length > 0 ? [filePaths] : []) : (filePaths && filePaths.length > 0 ? filePaths : []);
+
         let contents = messages.map(message => {
-            // console.log("[AI] Building request data for message:", JSON.stringify(message, null, 2));
             const geminiApiRoleName = (message.role === "assistant") ? "model" : message.role;
             const usingSearch = tools[0]?.google_search !== undefined
             if (!usingSearch && message.functionCall != undefined && message.functionName.length > 0) {
@@ -26,6 +31,7 @@ ApiStrategy {
                     "parts": [{
                         functionCall: {
                             "name": message.functionName,
+                            "args": message.functionCall?.args ?? {}
                         }
                     }]
                 }
@@ -36,7 +42,7 @@ ApiStrategy {
                     "parts": [{ 
                         functionResponse: {
                             "name": message.functionName,
-                            "response": { "content": message.functionResponse }
+                            "response": { "output": message.functionResponse }
                         }
                     }]
                 }
@@ -45,41 +51,72 @@ ApiStrategy {
                 "role": geminiApiRoleName,
                 "parts": [
                     { text: message.rawContent },
-                    ...(message.fileUri && message.fileUri.length > 0 ? [{ 
+                    ...(message.fileInfos && message.fileInfos.length > 0 ? message.fileInfos.map(info => ({ 
                         "file_data": {
-                            "mime_type": message.fileMimeType,
-                            "file_uri": message.fileUri
+                            "mime_type": info.mimeType,
+                            "file_uri": info.uri
                         }
-                    }] : [])
+                    })) : [])
                 ]
             }
         })
-        if (filePath && filePath.length > 0) {
-            const trimmedFilePath = CF.FileUtils.trimFileProtocol(filePath);
-            // Add file_data part to the last message's parts array
-            contents[contents.length - 1].parts.unshift({
-                file_data: {
-                    mime_type: fileMimeTypeSubstitutionString,
-                    file_uri: fileUriSubstitutionString
-                }
-            });
+        if (paths && paths.length > 0) {
+            for (let i = 0; i < paths.length; i++) {
+                contents[contents.length - 1].parts.unshift({
+                    file_data: {
+                        mime_type: fileMimeTypeSubstitutionString + i,
+                        file_uri: fileUriSubstitutionString + i
+                    }
+                });
+            }
         }
+
+        let generationConfig = {
+            "temperature": temperature,
+            "topP": 0.95,
+            "topK": 64,
+            "candidateCount": 1,
+        };
+        if (isGemmaModel(model)) {
+            generationConfig["thinkingConfig"] = {
+                "includeThoughts": false,
+            };
+        }
+
         let baseData = {
             "contents": contents,
             "tools": tools,
-            "system_instruction": {
-                "parts": [{ text: systemPrompt }]
-            },
-            "generationConfig": {
-                "temperature": temperature,
-            },
+            "generationConfig": generationConfig,
+            "safetySettings": [
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "OFF"
+                },
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "OFF"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "OFF"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "OFF"
+                }
+            ]
         };
-        // print("Gemini API call payload:", JSON.stringify(baseData, null, 2));
+
+        if (systemPrompt && systemPrompt.trim().length > 0) {
+            baseData["system_instruction"] = {
+                "parts": [{ text: systemPrompt }]
+            };
+        }
+
         return model.extraParams ? Object.assign({}, baseData, model.extraParams) : baseData;
     }
 
     function buildAuthorizationHeader(apiKeyEnvVarName: string): string {
-        // Gemini doesn't use Authorization header, key is in URL
         return "";
     }
 
@@ -106,8 +143,10 @@ ApiStrategy {
 
             // Uploaded file
             if (dataJson.uploadedFile) {
-                message.fileUri = dataJson.uploadedFile.uri;
-                message.fileMimeType = dataJson.uploadedFile.mimeType;
+                const info = dataJson.uploadedFile;
+                let newFileInfos = message.fileInfos ? [...message.fileInfos] : [];
+                newFileInfos[info.index] = { uri: info.uri, mimeType: info.mimeType, localPath: info.localPath };
+                message.fileInfos = newFileInfos;
                 return ({})
             }
 
@@ -131,15 +170,37 @@ ApiStrategy {
             if (dataJson.candidates[0]?.content?.parts[0]?.functionCall) {
                 const functionCall = dataJson.candidates[0]?.content?.parts[0]?.functionCall;
                 message.functionName = functionCall.name;
-                message.functionCall = functionCall.name;
-                const newContent = `\n\n[[ Function: ${functionCall.name}(${JSON.stringify(functionCall.args, null, 2)}) ]]\n`
-                message.rawContent += newContent;
-                message.content += newContent;
+                message.functionCall = functionCall; 
+
+                const showSearchModeLabel = false;
+
+                const functionLabels = {
+                    "switch_to_search_mode": "Search Mode",
+                };
+
+                const displayLabel = functionLabels[functionCall.name] ?? functionCall.name;
+                const rawNewContent = `\n\nFunction: ${functionCall.name}(${JSON.stringify(functionCall.args, null, 2)})\n`;
+                const displayNewContent = `\n\n${displayLabel}\n`;
+
+                message.rawContent += rawNewContent;
+                if (showSearchModeLabel) {
+                    message.content += displayNewContent;
+                }
+                message.visibleToUser = showSearchModeLabel || message.content.trim().length > 0;
+
                 return { functionCall: { name: functionCall.name, args: functionCall.args }, finished: finished };
             }
 
-            // Normal text response
-            const responseContent = dataJson.candidates[0]?.content?.parts[0]?.text
+            const parts = dataJson.candidates[0]?.content?.parts ?? [];
+            let responseContent = "";
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                // Skip parts flagged as internal thinking
+                if (part.thought === true) continue;
+                if (part.text !== undefined) {
+                    responseContent += part.text;
+                }
+            }
             message.rawContent += responseContent;
             message.content += responseContent;
             
@@ -180,8 +241,6 @@ ApiStrategy {
             
         } catch (e) {
             console.log("[AI] Gemini: Could not parse buffer: ", e);
-            message.rawContent += buffer;
-            message.content += buffer;
         } finally {
             buffer = "";
         }
@@ -196,54 +255,66 @@ ApiStrategy {
         buffer = "";
     }
 
-    function buildScriptFileSetup(filePath) {
-        const trimmedFilePath = CF.FileUtils.trimFileProtocol(filePath);
+    function buildScriptFileSetup(filePaths: var): string {
+        const paths = (typeof filePaths === "string") ? (filePaths.length > 0 ? [filePaths] : []) : (Array.isArray(filePaths) ? filePaths : []);
         let content = ""
 
-        // print("file path:", filePath)
-        // print("trimmed file path:", trimmedFilePath)
-        // print("escaped file path:", CF.StringUtils.shellSingleQuoteEscape(trimmedFilePath))
+        for (let i = 0; i < paths.length; i++) {
+            const trimmedFilePath = CF.FileUtils.trimFileProtocol(paths[i]);
+            const mimeVar = `${fileMimeTypeVarName}${i}`;
+            const uriVar = `${fileUriVarName}${i}`;
 
-        content += `IMAGE_PATH='${CF.StringUtils.shellSingleQuoteEscape(trimmedFilePath)}'\n`;
-        content += `${fileMimeTypeVarName}=$(file -b --mime-type "$IMAGE_PATH")\n`;
-        content += 'NUM_BYTES=$(wc -c < "${IMAGE_PATH}")\n';
-        content += 'tmp_header_file="/tmp/quickshell/ai/upload-header.tmp"\n';
-        content += 'tmp_file_info_file="/tmp/quickshell/ai/file-info.json.tmp"\n';
+            content += `IMAGE_PATH_${i}='${CF.StringUtils.shellSingleQuoteEscape(trimmedFilePath)}'\n`;
+            content += `${mimeVar}=$(file -b --mime-type "$IMAGE_PATH_${i}")\n`;
+            content += `if [[ "$${mimeVar}" == text/* ]] || [[ "$${mimeVar}" == inode/x-empty ]] || [[ "$${mimeVar}" == application/x-shellscript ]]; then\n`;
+            content += `    ${mimeVar}="text/plain"\n`;
+            content += `fi\n`;
+            content += `NUM_BYTES_${i}=$(wc -c < "$IMAGE_PATH_${i}")\n`;
+            content += `tmp_header_file_${i}="/tmp/quickshell/ai/upload-header-${i}.tmp"\n`;
+            content += `tmp_file_info_file_${i}="/tmp/quickshell/ai/file-info-${i}.json.tmp"\n`;
 
-        // Initial resumable request defining metadata.
-        // The upload url is in the response headers dump them to a file.
-        content += 'curl "https://generativelanguage.googleapis.com/upload/v1beta/files"'
-            + ` -H "x-goog-api-key: \$${apiKeyEnvVarName}"`
-            + ' -D $tmp_header_file'
-            + ' -H "X-Goog-Upload-Protocol: resumable"'
-            + ' -H "X-Goog-Upload-Command: start"'
-            + ' -H "X-Goog-Upload-Header-Content-Length: ${NUM_BYTES}"'
-            + ` -H "X-Goog-Upload-Header-Content-Type: \${${fileMimeTypeVarName}}"`
-            + ' -H "Content-Type: application/json"'
-            + ` -d "{'file': {'display_name': 'Image'}}" 2> /dev/null`
-            + '\n';
+            content += 'curl "https://generativelanguage.googleapis.com/upload/v1beta/files"'
+                + ` -H "x-goog-api-key: \$${apiKeyEnvVarName}"`
+                + ` -D $tmp_header_file_${i}`
+                + ' -H "X-Goog-Upload-Protocol: resumable"'
+                + ' -H "X-Goog-Upload-Command: start"'
+                + ` -H "X-Goog-Upload-Header-Content-Length: \${NUM_BYTES_${i}}"`
+                + ` -H "X-Goog-Upload-Header-Content-Type: \${${mimeVar}}"`
+                + ' -H "Content-Type: application/json"'
+                + ` -d "{'file': {'display_name': 'Image'}}" 2> /dev/null`
+                + '\n';
 
-        // Get file upload header
-        content += 'upload_url=$(grep -i "x-goog-upload-url: " "${tmp_header_file}" | cut -d" " -f2 | tr -d "\r")\n';
-        content += 'rm "${tmp_header_file}"\n';
+            content += `upload_url_${i}=$(grep -i "x-goog-upload-url: " "\${tmp_header_file_${i}}" | cut -d" " -f2 | tr -d "\r")\n`;
+            content += `rm "\${tmp_header_file_${i}}"\n`;
 
-        // Upload the actual file
-        content += 'curl "${upload_url}"'
-            + ` -H "x-goog-api-key: \$${apiKeyEnvVarName}"`
-            + ' -H "Content-Length: ${NUM_BYTES}"'
-            + ' -H "X-Goog-Upload-Offset: 0"'
-            + ' -H "X-Goog-Upload-Command: upload, finalize"'
-            + ' --data-binary "@${IMAGE_PATH}" 2> /dev/null > "${tmp_file_info_file}"'
-            + '\n';
+            content += `curl "\${upload_url_${i}}"`
+                + ` -H "x-goog-api-key: \$${apiKeyEnvVarName}"`
+                + ` -H "Content-Length: \${NUM_BYTES_${i}}"`
+                + ' -H "X-Goog-Upload-Offset: 0"'
+                + ' -H "X-Goog-Upload-Command: upload, finalize"'
+                + ` --data-binary "@$IMAGE_PATH_${i}" 2> /dev/null > "\${tmp_file_info_file_${i}}"\n`;
 
-        content += `${fileUriVarName}=$(jq -r ".file.uri" "$tmp_file_info_file")\n`
-        content += `printf "{\\"uploadedFile\\": {\\"uri\\": \\"$${fileUriVarName}\\", \\"mimeType\\": \\"$${fileMimeTypeVarName}\\"}}\\n,\\n"\n`
+            content += `${uriVar}=$(jq -r ".file.uri" "$tmp_file_info_file_${i}")\n`
+            content += `printf "{\\"uploadedFile\\": {\\"uri\\": \\"$${uriVar}\\", \\"mimeType\\": \\"$${mimeVar}\\", \\"localPath\\": \\"$IMAGE_PATH_${i}\\", \\"index\\": ${i}}}\\n,\\n"\n`
+        }
 
         return content
     }
 
-    function finalizeScriptContent(scriptContent: string): string {
-        return scriptContent.replace(fileMimeTypeSubstitutionString, `'"\$${fileMimeTypeVarName}"'`)
-                            .replace(fileUriSubstitutionString, `'"\$${fileUriVarName}"'`);
+    function finalizeScriptContent(scriptContent: string, filePathsCount: var): string {
+        let count = 0;
+        if (typeof filePathsCount === "number") {
+            count = filePathsCount;
+        } else if (typeof filePathsCount === "string") {
+            count = filePathsCount.length > 0 ? 1 : 0;
+        } else if (Array.isArray(filePathsCount)) {
+            count = filePathsCount.length;
+        }
+        let res = scriptContent;
+        for (let i = 0; i < count; i++) {
+            res = res.replace(fileMimeTypeSubstitutionString + i, `'"\$${fileMimeTypeVarName}${i}"'`)
+                     .replace(fileUriSubstitutionString + i, `'"\$${fileUriVarName}${i}"'`);
+        }
+        return res;
     }
 }

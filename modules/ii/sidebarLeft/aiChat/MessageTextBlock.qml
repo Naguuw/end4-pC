@@ -64,7 +64,7 @@ ColumnLayout {
             const markdownImage = `![latex](${imagePath})`;
 
             const expression = LatexRenderer.processedExpressions[hash];
-            renderedSegmentContent = renderedSegmentContent.replace(expression, markdownImage);
+            renderedSegmentContent = renderedSegmentContent.split(expression).join(markdownImage);
         }
     }
 
@@ -73,7 +73,8 @@ ColumnLayout {
     }
     onEditingChanged: {
         if (!editing) {
-            renderLatex()
+            renderedSegmentContent = StringUtils.replaceCommonLatexSymbols(segmentContent);
+            renderLatex();
         } else {
             // console.log("Editing mode enabled", segmentContent)
             root.shownText = segmentContent
@@ -82,7 +83,7 @@ ColumnLayout {
 
     onSegmentContentChanged: {
         // console.log("Segment content changed: " + segmentContent);
-        renderedSegmentContent = segmentContent;
+        renderedSegmentContent = StringUtils.replaceCommonLatexSymbols(segmentContent);
         if (!root.editing && segmentContent) {
             root.renderLatex();
         }

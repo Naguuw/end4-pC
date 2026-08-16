@@ -295,4 +295,77 @@ Singleton {
             }
         );
     }
+
+    /**
+     * Replaces common inline LaTeX symbols and arrows with their Unicode equivalents.
+     * @param { string } text
+     * @returns { string }
+     */
+    function replaceCommonLatexSymbols(text) {
+        if (!text) return "";
+        const map = {
+            "\\rightarrow": "→",
+            "\\to": "→",
+            "\\leftarrow": "←",
+            "\\gets": "←",
+            "\\Rightarrow": "⇒",
+            "\\Leftarrow": "⇐",
+            "\\leftrightarrow": "↔",
+            "\\Leftrightarrow": "⇔",
+            "\\mapsto": "↦",
+            "\\uparrow": "↑",
+            "\\downarrow": "↓",
+            "\\le": "≤",
+            "\\leq": "≤",
+            "\\ge": "≥",
+            "\\geq": "≥",
+            "\\neq": "≠",
+            "\\ne": "≠",
+            "\\approx": "≈",
+            "\\times": "×",
+            "\\div": "÷",
+            "\\pm": "±",
+            "\\mp": "∓",
+            "\\cdot": "·",
+            "\\cdots": "…",
+            "\\ldots": "…",
+            "\\dots": "…",
+            "\\infty": "∞",
+            "\\in": "∈",
+            "\\notin": "∉",
+            "\\subset": "⊂",
+            "\\subseteq": "⊆",
+            "\\cup": "∪",
+            "\\cap": "∩",
+            "\\forall": "∀",
+            "\\exists": "∃",
+            "\\therefore": "∴",
+            "\\because": "∵",
+            "\\equiv": "≡",
+            "\\alpha": "α",
+            "\\beta": "β",
+            "\\gamma": "γ",
+            "\\delta": "δ",
+            "\\epsilon": "ε",
+            "\\theta": "θ",
+            "\\lambda": "λ",
+            "\\mu": "μ",
+            "\\pi": "π",
+            "\\sigma": "σ",
+            "\\tau": "τ",
+            "\\phi": "φ",
+            "\\omega": "ω",
+            "\\Delta": "Δ",
+            "\\Omega": "Ω"
+        };
+        let res = text;
+        for (let cmd in map) {
+            const sym = map[cmd];
+            const escapedCmd = "\\" + cmd;
+            const dollarRegex = new RegExp("\\$\\s*" + escapedCmd + "\\s*\\$", "g");
+            const parenRegex = new RegExp("\\\\\\(\\s*" + escapedCmd + "\\s*\\\\\\)", "g");
+            res = res.replace(dollarRegex, sym).replace(parenRegex, sym);
+        }
+        return res;
+    }
 }

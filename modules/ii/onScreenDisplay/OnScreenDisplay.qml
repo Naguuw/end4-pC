@@ -22,6 +22,10 @@ Scope {
             sourceUrl: "indicators/VolumeIndicator.qml"
         },
         {
+            id: "volume_boost",
+            sourceUrl: "indicators/VolumeBoostIndicator.qml"
+        },
+        {
             id: "brightness",
             sourceUrl: "indicators/BrightnessIndicator.qml"
         },
@@ -71,13 +75,13 @@ Scope {
         function onVolumeChanged() {
             if (!Audio.ready)
                 return;
-            root.currentIndicator = "volume";
+            root.currentIndicator = (Audio.sink.audio.volume > 1.0) ? "volume_boost" : "volume";
             root.triggerOsd();
         }
         function onMutedChanged() {
             if (!Audio.ready)
                 return;
-            root.currentIndicator = "volume";
+            root.currentIndicator = (Audio.sink.audio.volume > 1.0) ? "volume_boost" : "volume";
             root.triggerOsd();
         }
     }

@@ -27,14 +27,18 @@ else
     exit 1
 fi
 
-if [ -z "$AUDIO_DEVICE" ] || ! pactl list short sources | grep -q "$AUDIO_DEVICE"; then
+if [ -z "$AUDIO_DEVICE" ] || ! pactl list short sources | grep -qF "$AUDIO_DEVICE"; then
     exit 1
 fi
 
 mkfifo "$FIFO"
 
+SONGREC_PID=""
+TIMER_PID=""
+
 cleanup() {
-    kill "$SONGREC_PID" 2>/dev/null || true
+    [ -n "$TIMER_PID" ] && kill "$TIMER_PID" 2>/dev/null
+    [ -n "$SONGREC_PID" ] && kill "$SONGREC_PID" 2>/dev/null
     wait "$SONGREC_PID" 2>/dev/null
     rm -f "$FIFO"
 }
@@ -44,9 +48,10 @@ songrec listen --audio-device "$AUDIO_DEVICE" --request-interval "$INTERVAL" --j
 SONGREC_PID=$!
 
 ( sleep "$TOTAL_DURATION" && kill "$SONGREC_PID" 2>/dev/null ) &
+TIMER_PID=$!
 
 while IFS= read -r line; do
-    if echo "$line" | grep -q '"matches": \['; then
+    if echo "$line" | grep -q '"matches":\[{'; then
         echo "$line"
         exit 0
     fi

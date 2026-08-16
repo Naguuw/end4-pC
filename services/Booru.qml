@@ -136,7 +136,7 @@ Singleton {
                         "md5": item.md5,
                         "preview_url": item.preview_file_url,
                         "sample_url": item.file_url ?? item.large_file_url,
-                        "file_url": item.large_file_url,
+                        "file_url": item.file_url ?? item.large_file_url,
                         "file_ext": item.file_ext,
                         "source": getWorkingImageSource(item.source) ?? item.file_url,
                     }
@@ -148,41 +148,6 @@ Singleton {
                     return {
                         "name": item.name,
                         "count": item.post_count
-                    }
-                })
-            }
-        },
-        "gelbooru": {
-            "name": "Gelbooru",
-            "url": "https://gelbooru.com",
-            "api": "https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1",
-            "description": Translation.tr("The hentai one | Great quantity, a lot of NSFW, quality varies wildly"),
-            "mapFunc": (response) => {
-                response = response.post
-                return response.map(item => {
-                    return {
-                        "id": item.id,
-                        "width": item.width,
-                        "height": item.height,
-                        "aspect_ratio": item.width / item.height,
-                        "tags": item.tags,
-                        "rating": item.rating.replace('general', 's').charAt(0),
-                        "is_nsfw": (item.rating != 's'),
-                        "md5": item.md5,
-                        "preview_url": item.preview_url,
-                        "sample_url": item.sample_url ?? item.file_url,
-                        "file_url": item.file_url,
-                        "file_ext": item.file_url.split('.').pop(),
-                        "source": getWorkingImageSource(item.source) ?? item.file_url,
-                    }
-                })
-            },
-            "tagSearchTemplate": "https://gelbooru.com/index.php?page=dapi&s=tag&q=index&json=1&orderby=count&limit=10&name_pattern={{query}}%",
-            "tagMapFunc": (response) => {
-                return response.tag.map(item => {
-                    return {
-                        "name": item.name,
-                        "count": item.count
                     }
                 })
             }
@@ -407,7 +372,7 @@ Singleton {
         try {
             // Required for danbooru and konachan
             if (["danbooru", "konachan"].includes(currentProvider)) {
-                xhr.setRequestHeader("User-Agent", defaultUserAgent)
+                xhr.setRequestHeader("User-Agent", "User/1.0 (Quickshell)")
             }
             else if (currentProvider == "zerochan") {
                 const userAgent = Config.options?.sidebar?.booru?.zerochan?.username ? `Desktop sidebar booru viewer - username: ${Config.options.sidebar.booru.zerochan.username}` : defaultUserAgent
@@ -459,7 +424,7 @@ Singleton {
         try {
             // Required for danbooru and konachan
             if (["danbooru", "konachan"].includes(currentProvider)) {
-                xhr.setRequestHeader("User-Agent", defaultUserAgent)
+                xhr.setRequestHeader("User-Agent", "User/1.0 (Quickshell)")
             }
             xhr.send()
         } catch (error) {

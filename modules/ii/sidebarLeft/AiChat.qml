@@ -475,23 +475,32 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             Layout.fillWidth: true
             radius: Appearance.rounding.normal - root.padding
             color: Appearance.colors.colLayer2
-            implicitHeight: Math.max(inputFieldRowLayout.implicitHeight + inputFieldRowLayout.anchors.topMargin + commandButtonsRow.implicitHeight + commandButtonsRow.anchors.bottomMargin + spacing, 45) + (attachedFileIndicator.implicitHeight + spacing + attachedFileIndicator.anchors.topMargin)
+            implicitHeight: Math.max(inputFieldRowLayout.implicitHeight + inputFieldRowLayout.anchors.topMargin + commandButtonsRow.implicitHeight + commandButtonsRow.anchors.bottomMargin + spacing, 45) + (attachedFilesColumn.implicitHeight + (attachedFilesColumn.children.length > 0 ? (spacing + attachedFilesColumn.anchors.topMargin) : 0))
             clip: true
 
             Behavior on implicitHeight {
                 animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
 
-            AttachedFileIndicator {
-                id: attachedFileIndicator
+            ColumnLayout {
+                id: attachedFilesColumn
                 anchors {
                     top: parent.top
                     left: parent.left
                     right: parent.right
-                    margins: visible ? 5 : 0
+                    margins: (Ai.pendingFilePaths.length > 0) ? 5 : 0
                 }
-                filePath: Ai.pendingFilePath
-                onRemove: Ai.attachFile("")
+                spacing: 5
+
+                Repeater {
+                    model: Ai.pendingFilePaths
+                    delegate: AttachedFileIndicator {
+                        Layout.fillWidth: true
+                        showImagePreview: Ai.pendingFilePaths.length === 1
+                        filePath: modelData
+                        onRemove: Ai.removePendingFile(index)
+                    }
+                }
             }
 
             RowLayout { // Input field and send button
@@ -522,6 +531,21 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         background: null
 
                         onTextChanged: {
+                            // Detect pasted file URIs (from file manager Ctrl+C then Ctrl+V)
+                            // Only intercept if ALL tokens are file:// URIs or absolute paths
+                            if (messageInputField.text.includes("file://")) {
+                                const tokens = messageInputField.text.trim().split(/[\r\n,]+/).filter(t => t.trim().length > 0);
+                                const allAreFilePaths = tokens.length > 0 && tokens.every(t => t.trim().startsWith("file://") || t.trim().startsWith("/"));
+                                if (allAreFilePaths) {
+                                    const textToAttach = messageInputField.text;
+                                    Qt.callLater(function() {
+                                        messageInputField.clear();
+                                        Ai.attachFile(textToAttach);
+                                    });
+                                    return;
+                                }
+                            }
+
                             // Handle suggestions
                             if (messageInputField.text.length === 0) {
                                 root.suggestionQuery = "";
@@ -651,7 +675,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                     // Insert newline
                                     messageInputField.insert(messageInputField.cursorPosition, "\n");
                                     event.accepted = true;
-                                } else {
+                                } else if (!Ai.isResponding) {
                                     // Accept text
                                     const inputText = messageInputField.text;
                                     messageInputField.clear();
@@ -659,29 +683,16 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                     event.accepted = true;
                                 }
                             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
-                                // Intercept Ctrl+V to handle image/file pasting
-                                if (event.modifiers & Qt.ShiftModifier) {
-                                    // Let Shift+Ctrl+V = plain paste
-                                    messageInputField.text += Quickshell.clipboardText;
-                                    event.accepted = true;
-                                    return;
-                                }
-                                // Try image paste first
                                 const currentClipboardEntry = Cliphist.entries[0];
-                                const cleanCliphistEntry = StringUtils.cleanCliphistEntry(currentClipboardEntry);
                                 if (/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(currentClipboardEntry)) {
-                                    // First entry = currently copied entry = image?
+                                    // Image copied from cliphist — decode & attach
                                     decodeImageAndAttachProc.handleEntry(currentClipboardEntry);
                                     event.accepted = true;
-                                    return;
-                                } else if (cleanCliphistEntry.startsWith("file://")) {
-                                    // First entry = currently copied entry = image?
-                                    const fileName = decodeURIComponent(cleanCliphistEntry);
-                                    Ai.attachFile(fileName);
-                                    event.accepted = true;
-                                    return;
+                                } else {
+                                    // Text or file URIs — let Qt handle native paste
+                                    // onTextChanged will detect file:// and auto-attach
+                                    event.accepted = false;
                                 }
-                                event.accepted = false; // No image, let text pasting proceed
                             } else if (event.key === Qt.Key_Escape) {
                                 // Esc to detach file
                                 if (Ai.pendingFilePath.length > 0) {
@@ -694,23 +705,27 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         }
                     }
                 }
-                RippleButton { // Send button
+                RippleButton { // Send / Cancel button
                     id: sendButton
                     Layout.alignment: Qt.AlignBottom
                     Layout.rightMargin: 5
                     implicitWidth: 40
                     implicitHeight: 40
                     buttonRadius: Appearance.rounding.small
-                    enabled: messageInputField.text.length > 0
+                    enabled: Ai.isResponding || messageInputField.text.length > 0
                     toggled: enabled
 
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: sendButton.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: {
-                            const inputText = messageInputField.text;
-                            root.handleInput(inputText);
-                            messageInputField.clear();
+                            if (Ai.isResponding) {
+                                Ai.stopResponse();
+                            } else {
+                                const inputText = messageInputField.text;
+                                root.handleInput(inputText);
+                                messageInputField.clear();
+                            }
                         }
                     }
 
@@ -719,7 +734,15 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         horizontalAlignment: Text.AlignHCenter
                         iconSize: 22
                         color: sendButton.enabled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2Disabled
-                        text: "arrow_upward"
+                        text: Ai.isResponding ? "stop" : "arrow_upward"
+
+                        Behavior on text {
+                            SequentialAnimation {
+                                NumberAnimation { target: sendButton.contentItem; property: "scale"; to: 0.6; duration: 80; easing.type: Easing.OutQuad }
+                                PropertyAction {}
+                                NumberAnimation { target: sendButton.contentItem; property: "scale"; to: 1.0; duration: 120; easing.type: Easing.OutBack }
+                            }
+                        }
                     }
                 }
             }

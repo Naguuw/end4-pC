@@ -17,7 +17,7 @@ get_pictures_dir() {
     echo "$HOME/Pictures"
 }
 
-QUICKSHELL_CONFIG_NAME="ii"
+QUICKSHELL_CONFIG_NAME="end4-pC"
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
@@ -29,7 +29,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 mkdir -p "$PICTURES_DIR/Wallpapers"
 
-response=$(curl "https://osu.ppy.sh/api/v2/seasonal-backgrounds")
+response=$(curl "https.ppy.sh/api/v2/seasonal-backgrounds")
 images=$(echo "$response" | jq '.backgrounds | length' -r);
 randomIndex=$((RANDOM % images));
 link=$(echo "$response" | jq ".backgrounds[$randomIndex].url" -r)

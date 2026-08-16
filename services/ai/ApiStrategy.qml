@@ -7,6 +7,6 @@ QtObject {
     function parseResponseLine(line: string, message: AiMessageData) { throw new Error("Not implemented") }
     function onRequestFinished(message: AiMessageData): var { return {} } // Default: no special handling
     function reset() { } // Reset any internal state if needed
-    function buildScriptFileSetup(filePath) { return "" } // Default: no setup
-    function finalizeScriptContent(scriptContent: string): string { return scriptContent } // Optionally modify/finalize script
+    function buildScriptFileSetup(filePath: var): string { return "" } // Default: no setup
+    function finalizeScriptContent(scriptContent: string, filePathsCount: var): string { return scriptContent } // Optionally modify/finalize script
 }

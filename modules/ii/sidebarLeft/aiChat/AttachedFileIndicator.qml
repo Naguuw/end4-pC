@@ -13,6 +13,7 @@ Rectangle {
 
     signal remove()
     property bool canRemove: true
+    property bool showImagePreview: true
     property string filePath: ""
     property string mimeType: ""
     property real maxHeight: 200
@@ -59,6 +60,16 @@ Rectangle {
     radius: Appearance.rounding.small - anchors.margins
     color: Appearance.colors.colLayer2
     implicitHeight: visible ? (contentItem.implicitHeight + verticalPadding * 2) : 0
+
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: root.mimeType.startsWith("image/") ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: {
+            if (root.mimeType.startsWith("image/")) {
+                root.showImagePreview = !root.showImagePreview;
+            }
+        }
+    }
 
     ColumnLayout {
         id: contentItem
@@ -119,11 +130,13 @@ Rectangle {
 
         Loader {
             id: imagePreviewLoader
-            visible: (root.imageWidth != -1) && (root.imageHeight != -1)
+            active: root.mimeType.startsWith("image/") && root.showImagePreview && (root.imageWidth != -1) && (root.imageHeight != -1)
+            visible: active
+            Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter
             sourceComponent: Item {
                 implicitHeight: root.imageHeight * root.scale
-                implicitWidth: imagePreview.implicitWidth
+                implicitWidth: Math.min(root.imageWidth * root.scale, imagePreviewLoader.width)
                 StyledImage {
                     id: imagePreview
                     anchors.fill: parent

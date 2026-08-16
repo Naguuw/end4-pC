@@ -13,6 +13,7 @@ Item {
     property bool scaleIcon: false
     property alias from: valueProgressBar.from
     property alias to: valueProgressBar.to
+    property string displayText: Math.round(root.value * 100)
 
     implicitWidth: Appearance.sizes.osdWidth + 4 * Appearance.sizes.elevationMargin + 80
     implicitHeight: valueIndicator.implicitHeight + 2 * Appearance.sizes.elevationMargin
@@ -85,7 +86,7 @@ Item {
                     font.pixelSize: Appearance.font.pixelSize.normal
                     font.features: { "tnum": 1 }
                     font.letterSpacing: 0.2
-                    text: Math.round(root.value * 100)
+                    text: root.displayText
                 }
             }
         }
