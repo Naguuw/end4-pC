@@ -798,12 +798,20 @@ Singleton {
         if (messageIndex < 0 || messageIndex >= messageIDs.length) return;
         const id = root.messageIDs[messageIndex];
         const message = root.messageByID[id];
-        if (message.role !== "assistant") return;
-        // Remove all messages after this one
-        for (let i = root.messageIDs.length - 1; i >= messageIndex; i--) {
-            root.removeMessage(i);
+        if (!message) return;
+        if (message.role === "assistant") {
+            // Remove all messages starting from this assistant message onwards
+            for (let i = root.messageIDs.length - 1; i >= messageIndex; i--) {
+                root.removeMessage(i);
+            }
+            requester.makeRequest();
+        } else if (message.role === "user") {
+            // Remove all messages after this user message
+            for (let i = root.messageIDs.length - 1; i > messageIndex; i--) {
+                root.removeMessage(i);
+            }
+            requester.makeRequest();
         }
-        requester.makeRequest();
     }
 
     function createFunctionOutputMessage(name, output, includeOutputInChat = true) {

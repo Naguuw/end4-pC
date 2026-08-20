@@ -11,7 +11,6 @@ import Qt5Compat.GraphicalEffects
 Item {
     id: root
     // These are needed on the parent loader
-    property bool editing: false
     property bool renderMarkdown: true
     property bool enableMouseSelection: false
     property var segmentContent: ({})
@@ -152,18 +151,15 @@ Item {
                 implicitHeight: messageTextBlock.implicitHeight
                 color: Appearance.colors.colLayer2
 
-                // Load data for the message at the correct scope
-                property bool editing: root.editing
-                property bool renderMarkdown: root.renderMarkdown
-                property bool enableMouseSelection: root.enableMouseSelection
-                property var messageData: root.messageData
-                property bool done: root.done
-
                 MessageTextBlock {
                     id: messageTextBlock
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
+                    renderMarkdown: root.renderMarkdown
+                    enableMouseSelection: root.enableMouseSelection
+                    messageData: root.messageData
+                    done: root.done
                     segmentContent: root.segmentContent
                 }
             }

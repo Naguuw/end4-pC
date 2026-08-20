@@ -13,7 +13,6 @@ import Quickshell
 ColumnLayout {
     id: root
     // These are needed on the parent loader
-    property bool editing: false
     property bool renderMarkdown: true
     property bool enableMouseSelection: false
     property var segmentContent: ({})
@@ -24,7 +23,7 @@ ColumnLayout {
     property list<string> renderedLatexHashes: []
     property string renderedSegmentContent: ""
     property string shownText: ""
-    property bool fadeChunkSplitting: !forceDisableChunkSplitting && !editing && !/\n\|/.test(shownText) && Config.options.sidebar.ai.textFadeIn
+    property bool fadeChunkSplitting: !forceDisableChunkSplitting && !/\n\|/.test(shownText) && Config.options.sidebar.ai.textFadeIn
 
     Layout.fillWidth: true
 
@@ -71,26 +70,15 @@ ColumnLayout {
     onDoneChanged: {
         renderTimer.restart();
     }
-    onEditingChanged: {
-        if (!editing) {
-            renderedSegmentContent = StringUtils.replaceCommonLatexSymbols(segmentContent);
-            renderLatex();
-        } else {
-            // console.log("Editing mode enabled", segmentContent)
-            root.shownText = segmentContent
-        }
-    }
 
     onSegmentContentChanged: {
-        // console.log("Segment content changed: " + segmentContent);
         renderedSegmentContent = StringUtils.replaceCommonLatexSymbols(segmentContent);
-        if (!root.editing && segmentContent) {
+        if (segmentContent) {
             root.renderLatex();
         }
     }
 
     onRenderedSegmentContentChanged: {
-        // console.log("Rendered segment content changed: " + renderedSegmentContent);
         if (renderedSegmentContent) {
             root.shownText = renderedSegmentContent;
         }
@@ -103,7 +91,6 @@ ColumnLayout {
         target: LatexRenderer
         function onRenderFinished(hash, imagePath) {
             const expression = LatexRenderer.processedExpressions[hash];
-            // console.log("Render finished: " + hash + " " + expression);
             handleRenderedLatex(hash);
         }
     }
@@ -150,8 +137,8 @@ ColumnLayout {
             }
 
             Layout.fillWidth: true
-            readOnly: !editing
-            selectByMouse: enableMouseSelection || editing
+            readOnly: true
+            selectByMouse: enableMouseSelection
             renderType: Text.NativeRendering
             font.family: Appearance.font.family.reading
             font.hintingPreference: Font.PreferNoHinting // Prevent weird bold text
@@ -163,11 +150,6 @@ ColumnLayout {
             textFormat: renderMarkdown ? TextEdit.MarkdownText : TextEdit.PlainText
             text: modelData
 
-            onTextChanged: {
-                if (!root.editing) return
-                segmentContent = text
-            }
-
             onLinkActivated: (link) => {
                 Qt.openUrlExternally(link)
                 GlobalStates.sidebarLeftOpen = false
@@ -178,15 +160,8 @@ ColumnLayout {
                 acceptedButtons: Qt.NoButton // Only for hover
                 hoverEnabled: true
                 cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : 
-                    (enableMouseSelection || editing) ? Qt.IBeamCursor : Qt.ArrowCursor
+                    enableMouseSelection ? Qt.IBeamCursor : Qt.ArrowCursor
             }
-
-            // Rectangle {
-            //     anchors.fill: parent
-            //     color: "#22786378"
-            //     border.width: 1
-            //     border.color: "#7E7E7E"
-            // }
         }
     }
 }

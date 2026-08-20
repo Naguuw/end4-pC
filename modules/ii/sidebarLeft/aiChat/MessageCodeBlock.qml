@@ -13,7 +13,6 @@ import org.kde.syntaxhighlighting
 ColumnLayout {
     id: root
     // These are needed on the parent loader
-    property bool editing: false
     property bool renderMarkdown: true
     property bool enableMouseSelection: false
     property var segmentContent: ({})
@@ -210,21 +209,16 @@ ColumnLayout {
                     TextArea { // Code
                         id: codeTextArea
                         Layout.fillWidth: true
-                        readOnly: !editing
-                        selectByMouse: enableMouseSelection || editing
+                        readOnly: true
+                        selectByMouse: enableMouseSelection
                         renderType: Text.NativeRendering
                         font.family: Appearance.font.family.monospace
                         font.hintingPreference: Font.PreferNoHinting // Prevent weird bold text
                         font.pixelSize: Appearance.font.pixelSize.small
                         selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
                         selectionColor: Appearance.colors.colSecondaryContainer
-                        // wrapMode: TextEdit.Wrap
                         color: messageData.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer1
-
                         text: segmentContent
-                        onTextChanged: {
-                            segmentContent = text
-                        }
 
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Tab) {

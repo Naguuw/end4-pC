@@ -19,9 +19,10 @@ Rectangle {
     property bool enableMouseSelection: false
     property bool renderMarkdown: true
     property bool editing: false
+    property string editDraft: ""
 
-    property list<var> messageBlocks: StringUtils.splitMarkdownBlocks(root.messageData?.content)
-    readonly property var attachedFilePaths: (root.messageData?.localFilePaths && root.messageData.localFilePaths.length > 0) ? root.messageData.localFilePaths : []
+    property var messageBlocks: (root.messageData && root.messageData.content) ? StringUtils.splitMarkdownBlocks(root.messageData.content) : []
+    readonly property var attachedFilePaths: (root.messageData && root.messageData.localFilePaths && root.messageData.localFilePaths.length > 0) ? root.messageData.localFilePaths : []
 
     anchors.left: parent?.left
     anchors.right: parent?.right
@@ -30,44 +31,28 @@ Rectangle {
     radius: Appearance.rounding.normal
     color: Appearance.colors.colLayer1
 
-    function saveMessage() {
-        if (!root.editing) return;
-        // Get all Loader children (each represents a segment)
-        const segments = messageContentColumnLayout.children
-            .map(child => child.segment)
-            .filter(segment => (segment));
+    function startEdit() {
+        if (!root.messageData) return;
+        root.editDraft = root.messageData.content ?? "";
+        root.editing = true;
+    }
 
-        // Reconstruct markdown
-        const newContent = segments.map(segment => {
-            if (segment.type === "code") {
-                const lang = segment.lang ? segment.lang : "";
-                // Remove trailing newlines
-                const code = segment.content.replace(/\n+$/, "");
-                return "```" + lang + "\n" + code + "\n```";
-            } else {
-                return segment.content;
-            }
-        }).join("");
+    function cancelEdit() {
+        root.editing = false;
+        root.editDraft = "";
+    }
 
-        root.editing = false
+    function saveMessage(resend = false) {
+        if (!root.editing || !root.messageData) return;
+        const newContent = root.editDraft;
+        root.editing = false;
         root.messageData.content = newContent;
+        root.messageData.rawContent = newContent;
+        if (resend) {
+            Ai.regenerate(root.messageIndex);
+        }
     }
 
-    Keys.onPressed: (event) => {
-        if ( // Prevent de-select
-            event.key === Qt.Key_Control || 
-            event.key == Qt.Key_Shift || 
-            event.key == Qt.Key_Alt || 
-            event.key == Qt.Key_Meta
-        ) {
-            event.accepted = true
-        }
-        // Ctrl + S to save
-        if ((event.key === Qt.Key_S) && event.modifiers == Qt.ControlModifier) {
-            root.saveMessage();
-            event.accepted = true;
-        }
-    }
 
     ColumnLayout { // Main layout of the whole thing
         id: columnLayout
@@ -182,7 +167,7 @@ Rectangle {
                     AiMessageControlButton {
                         id: regenButton
                         buttonIcon: "refresh"
-                        visible: messageData?.role === 'assistant'
+                        visible: !root.editing && messageData?.role === 'assistant'
 
                         onClicked: {
                             Ai.regenerate(root.messageIndex)
@@ -198,7 +183,7 @@ Rectangle {
                         buttonIcon: activated ? "inventory" : "content_copy"
 
                         onClicked: {
-                            Quickshell.clipboardText = root.messageData?.content
+                            Quickshell.clipboardText = root.editing ? root.editDraft : root.messageData?.content
                             copyButton.activated = true
                             copyIconTimer.restart()
                         }
@@ -216,23 +201,27 @@ Rectangle {
                             text: Translation.tr("Copy")
                         }
                     }
+
                     AiMessageControlButton {
                         id: editButton
                         activated: root.editing
                         enabled: root.messageData?.done ?? false
-                        buttonIcon: "edit"
+                        buttonIcon: root.editing ? "close" : "edit"
                         onClicked: {
-                            root.editing = !root.editing
-                            if (!root.editing) { // Save changes
-                                root.saveMessage()
+                            if (root.editing) {
+                                root.cancelEdit();
+                            } else {
+                                root.startEdit();
                             }
                         }
                         StyledToolTip {
-                            text: root.editing ? Translation.tr("Save") : Translation.tr("Edit")
+                            text: root.editing ? Translation.tr("Cancel edit") : Translation.tr("Edit")
                         }
                     }
+
                     AiMessageControlButton {
                         id: toggleMarkdownButton
+                        visible: !root.editing
                         activated: !root.renderMarkdown
                         buttonIcon: "code"
                         onClicked: {
@@ -242,8 +231,10 @@ Rectangle {
                             text: Translation.tr("View Markdown source")
                         }
                     }
+
                     AiMessageControlButton {
                         id: deleteButton
+                        visible: !root.editing
                         buttonIcon: "close"
                         onClicked: {
                             Ai.removeMessage(root.messageIndex)
@@ -272,8 +263,10 @@ Rectangle {
             }
         }
 
-        ColumnLayout { // Message content
+        ColumnLayout { // Message content (viewing mode)
             id: messageContentColumnLayout
+            visible: !root.editing
+            Layout.fillWidth: true
             spacing: 0
 
             Item {
@@ -303,7 +296,6 @@ Rectangle {
                     role: "type"
 
                     DelegateChoice { roleValue: "code"; MessageCodeBlock {
-                        editing: root.editing
                         renderMarkdown: root.renderMarkdown
                         enableMouseSelection: root.enableMouseSelection
                         segmentContent: modelData.content
@@ -311,7 +303,6 @@ Rectangle {
                         messageData: root.messageData
                     } }
                     DelegateChoice { roleValue: "think"; MessageThinkBlock {
-                        editing: root.editing
                         renderMarkdown: root.renderMarkdown
                         enableMouseSelection: root.enableMouseSelection
                         segmentContent: modelData.content
@@ -320,7 +311,6 @@ Rectangle {
                         completed: modelData.completed ?? false
                     } }
                     DelegateChoice { roleValue: "text"; MessageTextBlock {
-                        editing: root.editing
                         renderMarkdown: root.renderMarkdown
                         enableMouseSelection: root.enableMouseSelection
                         segmentContent: modelData.content
@@ -332,8 +322,172 @@ Rectangle {
             }
         }
 
+        ColumnLayout { // Message editor (editing mode)
+            id: messageEditorLayout
+            visible: root.editing
+            Layout.fillWidth: true
+            spacing: 6
+
+            Rectangle {
+                Layout.fillWidth: true
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer2
+                border.width: 1
+                border.color: Appearance.colors.colLayer2Active
+                implicitHeight: Math.min(320, Math.max(80, editorTextArea.implicitHeight + 16))
+
+                ScrollView {
+                    id: editorScrollView
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    clip: true
+                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                    StyledTextArea {
+                        id: editorTextArea
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        wrapMode: TextEdit.Wrap
+                        selectByMouse: true
+                        padding: 8
+                        background: null
+                        font.family: Appearance.font.family.reading
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnLayer1
+                        textFormat: TextEdit.PlainText
+                        text: root.editDraft
+                        placeholderText: Translation.tr("Edit message content...")
+
+                        Keys.priority: Keys.BeforeItem
+
+                        onTextChanged: {
+                            if (root.editing && root.editDraft !== text) {
+                                root.editDraft = text;
+                            }
+                        }
+
+                        Keys.onPressed: (event) => {
+                            const isCtrl = (event.modifiers & Qt.ControlModifier) !== 0;
+                            if (event.key === Qt.Key_Escape) {
+                                root.cancelEdit();
+                                event.accepted = true;
+                            } else if (isCtrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                                root.saveMessage(root.messageData && root.messageData.role === "user");
+                                event.accepted = true;
+                            } else if (isCtrl && event.key === Qt.Key_S) {
+                                root.saveMessage(false);
+                                event.accepted = true;
+                            } else if (isCtrl && (event.key === Qt.Key_Backspace || event.key === Qt.Key_W)) {
+                                // Delete one word backwards
+                                if (editorTextArea.selectedText.length > 0) {
+                                    const selStart = editorTextArea.selectionStart;
+                                    const selEnd = editorTextArea.selectionEnd;
+                                    editorTextArea.text = editorTextArea.text.substring(0, selStart) + editorTextArea.text.substring(selEnd);
+                                    editorTextArea.cursorPosition = selStart;
+                                } else {
+                                    const pos = editorTextArea.cursorPosition;
+                                    if (pos > 0) {
+                                        const curText = editorTextArea.text;
+                                        const textBefore = curText.substring(0, pos);
+                                        const match = textBefore.match(/(?:\s+|[^\s\w]+|\w+)\s*$/);
+                                        if (match && match[0].length > 0) {
+                                            const deleteLen = match[0].length;
+                                            const newPos = pos - deleteLen;
+                                            editorTextArea.text = curText.substring(0, newPos) + curText.substring(pos);
+                                            editorTextArea.cursorPosition = newPos;
+                                        }
+                                    }
+                                }
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Tab) {
+                                const cursor = editorTextArea.cursorPosition;
+                                editorTextArea.insert(cursor, "    ");
+                                editorTextArea.cursorPosition = cursor + 4;
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Control || event.key === Qt.Key_Shift || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta) {
+                                // Absorb modifier keys so parent does NOT steal focus to main message input
+                                event.accepted = true;
+                            }
+                        }
+
+                        Connections {
+                            target: root
+                            function onEditingChanged() {
+                                if (root.editing) {
+                                    editorTextArea.text = root.editDraft;
+                                    Qt.callLater(() => {
+                                        editorTextArea.forceActiveFocus();
+                                        editorTextArea.cursorPosition = editorTextArea.text.length;
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Shortcut {
+                enabled: root.editing
+                sequence: "Ctrl+Return"
+                onActivated: root.saveMessage(root.messageData && root.messageData.role === "user")
+            }
+            Shortcut {
+                enabled: root.editing
+                sequence: "Ctrl+Enter"
+                onActivated: root.saveMessage(root.messageData && root.messageData.role === "user")
+            }
+            Shortcut {
+                enabled: root.editing
+                sequence: "Ctrl+S"
+                onActivated: root.saveMessage(false)
+            }
+            Shortcut {
+                enabled: root.editing
+                sequence: "Escape"
+                onActivated: root.cancelEdit()
+            }
+
+            RowLayout { // Editor bottom action buttons
+                Layout.fillWidth: true
+                spacing: 0
+
+                StyledText {
+                    Layout.fillWidth: true
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    text: (root.messageData && root.messageData.role === "user")
+                        ? Translation.tr("Ctrl+Enter to submit")
+                        : Translation.tr("Ctrl+S to save • Esc to cancel")
+                    elide: Text.ElideRight
+                }
+
+                ButtonGroup {
+                    GroupButton {
+                        buttonText: Translation.tr("Cancel")
+                        onClicked: root.cancelEdit()
+                    }
+                    GroupButton {
+                        buttonText: Translation.tr("Save")
+                        onClicked: root.saveMessage(false)
+                    }
+                    GroupButton {
+                        visible: root.messageData && root.messageData.role === "user"
+                        buttonText: Translation.tr("Save & Submit")
+                        toggled: true
+                        onClicked: root.saveMessage(true)
+                        contentItem: StyledText {
+                            text: Translation.tr("Save & Submit")
+                            color: Appearance.colors.colOnPrimary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+            }
+        }
+
         Flow { // Annotations
-            visible: root.messageData?.annotationSources?.length > 0
+            visible: !root.editing && root.messageData?.annotationSources?.length > 0
             spacing: 5
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignLeft
@@ -351,7 +505,7 @@ Rectangle {
         }
 
         Flow { // Search queries
-            visible: root.messageData?.searchQueries?.length > 0
+            visible: !root.editing && root.messageData?.searchQueries?.length > 0
             spacing: 5
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignLeft
