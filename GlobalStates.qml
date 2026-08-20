@@ -45,14 +45,14 @@ Singleton {
     property real dropShelfY: 0
 
     readonly property var hotCornerOptions: [
-        { displayName: Translation.tr("None"),                  value: "none" },
+        { displayName: Translation.tr("None"),                   value: "none" },
         { displayName: Translation.tr("Left Sidebar"),           value: "sidebarLeftOpen" },
         { displayName: Translation.tr("Right Sidebar"),          value: "sidebarRightOpen" },
-        { displayName: Translation.tr("Overview Launcher"),               value: "overviewOpen" },
+        { displayName: Translation.tr("Overview Launcher"),      value: "overviewOpen" },
         { displayName: Translation.tr("Wallpaper Selector"),     value: "wallpaperSelectorOpen" },
         { displayName: Translation.tr("Media Controls"),         value: "mediaControlsOpen" },
         { displayName: Translation.tr("Overlay"),                value: "overlayOpen" },
-        { displayName: Translation.tr("ScreenShot Region"),        value: "regionSelectorOpen" },
+        { displayName: Translation.tr("ScreenShot Region"),      value: "regionSelectorOpen" },
         { displayName: Translation.tr("Screen Translator"),      value: "screenTranslatorOpen" },
         { displayName: Translation.tr("On-screen Keyboard"),     value: "oskOpen" },
         { displayName: Translation.tr("Session Menu"),           value: "sessionOpen" }
