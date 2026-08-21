@@ -24,8 +24,8 @@ ApiStrategy {
 
         let contents = messages.map(message => {
             const geminiApiRoleName = (message.role === "assistant") ? "model" : message.role;
-            const usingSearch = tools[0]?.google_search !== undefined
-            if (!usingSearch && message.functionCall != undefined && message.functionName.length > 0) {
+            const usingSearch = tools && tools.length > 0 && tools[0]?.google_search !== undefined;
+            if (!usingSearch && message.functionCall != undefined && message.functionName && message.functionName.length > 0) {
                 return {
                     "role": geminiApiRoleName,
                     "parts": [{
@@ -36,7 +36,7 @@ ApiStrategy {
                     }]
                 }
             }
-            if (!usingSearch && message.functionResponse != undefined && message.functionName.length > 0) {
+            if (!usingSearch && message.functionResponse != undefined && message.functionName && message.functionName.length > 0) {
                 return {
                     "role": geminiApiRoleName,
                     "parts": [{ 
@@ -77,15 +77,9 @@ ApiStrategy {
             "topK": 64,
             "candidateCount": 1,
         };
-        if (isGemmaModel(model)) {
-            generationConfig["thinkingConfig"] = {
-                "includeThoughts": false,
-            };
-        }
 
         let baseData = {
             "contents": contents,
-            "tools": tools,
             "generationConfig": generationConfig,
             "safetySettings": [
                 {
@@ -106,6 +100,10 @@ ApiStrategy {
                 }
             ]
         };
+
+        if (tools && tools.length > 0) {
+            baseData["tools"] = tools;
+        }
 
         if (systemPrompt && systemPrompt.trim().length > 0) {
             baseData["system_instruction"] = {
@@ -167,8 +165,10 @@ ApiStrategy {
             }
             
             // Function call handling
-            if (dataJson.candidates[0]?.content?.parts[0]?.functionCall) {
-                const functionCall = dataJson.candidates[0]?.content?.parts[0]?.functionCall;
+            const parts = dataJson.candidates[0]?.content?.parts ?? [];
+            const funcCallPart = parts.find(p => p && p.functionCall);
+            if (funcCallPart && funcCallPart.functionCall) {
+                const functionCall = funcCallPart.functionCall;
                 message.functionName = functionCall.name;
                 message.functionCall = functionCall; 
 
@@ -190,8 +190,6 @@ ApiStrategy {
 
                 return { functionCall: { name: functionCall.name, args: functionCall.args }, finished: finished };
             }
-
-            const parts = dataJson.candidates[0]?.content?.parts ?? [];
             let responseContent = "";
             for (let i = 0; i < parts.length; i++) {
                 const part = parts[i];
