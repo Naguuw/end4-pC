@@ -89,25 +89,38 @@ Singleton {
             "functions": [{"functionDeclarations": [
                 {
                     "name": "switch_to_search_mode",
-                    "description": "Search the web",
+                    "description": "Switch to Google Search mode to retrieve real-time data, current events, or web information.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
                 },
                 {
                     "name": "get_shell_config",
-                    "description": "Get the desktop shell config file contents",
+                    "description": "Read the desktop shell configuration. Pass 'section' to inspect a specific section (e.g. 'bar', 'appearance', 'ai', 'wallpaper') or omit it to list available top-level sections.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "section": {
+                                "type": "string",
+                                "description": "Specific config section to retrieve (e.g. 'bar', 'appearance', 'ai', 'wallpaper'). Leave empty to get available top-level section keys."
+                            }
+                        }
+                    }
                 },
                 {
                     "name": "set_shell_config",
-                    "description": "Set a field in the desktop graphical shell config file. Must only be used after `get_shell_config`.",
+                    "description": "Set a field in the desktop graphical shell configuration. Must only be used after verifying the key with `get_shell_config`.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "key": {
                                 "type": "string",
-                                "description": "The key to set, e.g. `bar.borderless`. MUST NOT BE GUESSED, use `get_shell_config` to see what keys are available before setting.",
+                                "description": "The exact configuration key path to set, e.g. `bar.borderless` or `wallpaper.enableBlur`. MUST NOT BE GUESSED."
                             },
                             "value": {
                                 "type": "string",
-                                "description": "The value to set, e.g. `true`"
+                                "description": "The value to set formatted as a string/JSON, e.g. 'true', 'false', '12', or '\"blur\"'."
                             }
                         },
                         "required": ["key", "value"]
@@ -115,18 +128,32 @@ Singleton {
                 },
                 {
                     "name": "run_shell_command",
-                    "description": "Run a shell command in bash and get its output. Use this only for quick commands that don't require user interaction. For commands that require interaction, ask the user to run manually instead.",
+                    "description": "Run a quick, non-interactive shell command in bash and get its output. Requires user confirmation in UI before executing.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "command": {
                                 "type": "string",
-                                "description": "The bash command to run",
-                            },
+                                "description": "The bash command to run."
+                            }
                         },
                         "required": ["command"]
                     }
                 },
+                {
+                    "name": "fetch_url",
+                    "description": "Fetch and read the text content of a specific URL (e.g. documentation, web article, GitHub repository, code). ALWAYS call this tool when the user provides a specific web URL or link.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "The full HTTP/HTTPS URL to fetch."
+                            }
+                        },
+                        "required": ["url"]
+                    }
+                }
             ]}],
             "search": [{
                 "google_search": {}
@@ -817,13 +844,13 @@ Singleton {
     function createFunctionOutputMessage(name, output, includeOutputInChat = true) {
         return aiMessageComponent.createObject(root, {
             "role": "user",
-            "content": `[[ Output of ${name} ]]${includeOutputInChat ? ("\n\n<think>\n" + output + "\n</think>") : ""}`,
-            "rawContent": `[[ Output of ${name} ]]${includeOutputInChat ? ("\n\n<think>\n" + output + "\n</think>") : ""}`,
+            "content": `Output of ${name} ${includeOutputInChat ? ("\n\n<think>\n" + output + "\n</think>") : ""}`,
+            "rawContent": `Output of ${name} ${includeOutputInChat ? ("\n\n<think>\n" + output + "\n</think>") : ""}`,
             "functionName": name,
             "functionResponse": output,
             "thinking": false,
             "done": true,
-            // "visibleToUser": false,
+            "visibleToUser": false,
         });
     }
 
@@ -863,7 +890,13 @@ Singleton {
         command: ["bash", "-c", shellCommand]
         stdout: SplitParser {
             onRead: (output) => {
-                commandExecutionProc.message.functionResponse += output + "\n\n";
+                // Truncate output to prevent exceeding 16000 TPM limit on long logs
+                if (commandExecutionProc.message.functionResponse.length < 2000) {
+                    commandExecutionProc.message.functionResponse += output + "\n\n";
+                    if (commandExecutionProc.message.functionResponse.length >= 2000) {
+                        commandExecutionProc.message.functionResponse += "\n...[Output truncated to conserve tokens]...\n";
+                    }
+                }
                 const updatedContent = commandExecutionProc.baseMessageContent + `\n\n<think>\n<tt>${commandExecutionProc.message.functionResponse}</tt>\n</think>`;
                 commandExecutionProc.message.rawContent = updatedContent;
                 commandExecutionProc.message.content = updatedContent;
@@ -875,25 +908,75 @@ Singleton {
         }
     }
 
+    Process {
+        id: urlFetchProc
+        property string targetUrl: ""
+        property string fetchedOutput: ""
+        command: ["python3", `${Directories.scriptPath}/ai/fetch-url.py`.replace(/file:\/\//, ""), targetUrl]
+        stdout: SplitParser {
+            onRead: (output) => {
+                if (urlFetchProc.fetchedOutput.length < 3000) {
+                    urlFetchProc.fetchedOutput += output + "\n";
+                }
+            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            const result = urlFetchProc.fetchedOutput.trim();
+            addFunctionOutputMessage("fetch_url", result.length > 0 ? result : Translation.tr("No content returned from URL."));
+            requester.makeRequest();
+        }
+    }
+
     function handleFunctionCall(name, args: var, message: AiMessageData) {
         if (name === "switch_to_search_mode") {
             const modelId = root.currentModelId;
             root.currentTool = "search"
             root.postResponseHook = () => { root.currentTool = "functions" }
-            addFunctionOutputMessage(name, Translation.tr("Switched to search mode. Continue with the user's request."))
+            addFunctionOutputMessage(name, Translation.tr("Switched to search mode. Now searching the web."))
             requester.makeRequest();
+        } else if (name === "fetch_url") {
+            if (!args.url || args.url.length === 0) {
+                addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `url`."));
+                return;
+            }
+            urlFetchProc.targetUrl = args.url.trim();
+            urlFetchProc.fetchedOutput = "";
+            urlFetchProc.running = true;
         } else if (name === "get_shell_config") {
-            const configJson = CF.ObjectUtils.toPlainObject(Config.options)
-            addFunctionOutputMessage(name, JSON.stringify(configJson));
+            const rawOptions = CF.ObjectUtils.toPlainObject(Config.options);
+            let resultData;
+            const requestedSection = args?.section ? String(args.section).trim() : "";
+            if (requestedSection.length > 0 && rawOptions[requestedSection] !== undefined) {
+                resultData = { [requestedSection]: rawOptions[requestedSection] };
+            } else if (requestedSection.length > 0) {
+                resultData = {
+                    "error": `Section '${requestedSection}' not found.`,
+                    "available_sections": Object.keys(rawOptions)
+                };
+            } else {
+                resultData = {
+                    "hint": "Pass 'section' argument to get details for a specific key (e.g. 'bar', 'appearance', 'wallpaper').",
+                    "available_sections": Object.keys(rawOptions)
+                };
+            }
+            addFunctionOutputMessage(name, JSON.stringify(resultData));
             requester.makeRequest();
         } else if (name === "set_shell_config") {
-            if (!args.key || !args.value) {
+            if (!args.key || args.value === undefined) {
                 addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `key` and `value`."));
                 return;
             }
             const key = args.key;
-            const value = args.value;
+            let value = args.value;
+            // Parse JSON values (booleans, numbers, arrays, objects) if provided as string
+            try {
+                value = JSON.parse(args.value);
+            } catch (e) {
+                // Keep as raw string if not JSON
+            }
             Config.setNestedValue(key, value);
+            addFunctionOutputMessage(name, `Config '${key}' successfully set to ${JSON.stringify(value)}.`);
+            requester.makeRequest();
         } else if (name === "run_shell_command") {
             if (!args.command || args.command.length === 0) {
                 addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `command`."));
