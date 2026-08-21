@@ -45,6 +45,16 @@ pre_process() {
     if [ ! -d "$CACHE_DIR"/user/generated ]; then
         mkdir -p "$CACHE_DIR"/user/generated
     fi
+
+    # Ensure gtk.css files are not symlinks to read-only system files
+    if [[ -L "$XDG_CONFIG_HOME/gtk-4.0/gtk.css" ]]; then
+        rm -f "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"
+        touch "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"
+    fi
+    if [[ -L "$XDG_CONFIG_HOME/gtk-3.0/gtk.css" ]]; then
+        rm -f "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"
+        touch "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"
+    fi
 }
 
 post_process() {
