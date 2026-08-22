@@ -128,13 +128,13 @@ Singleton {
                 },
                 {
                     "name": "run_shell_command",
-                    "description": "Run a quick, non-interactive shell command in bash and get its output. Requires user confirmation in UI before executing.",
+                    "description": "Run a quick, non-interactive local bash command and get its output. DO NOT use this tool for web searches (use switch_to_search_mode for searching) or for writing comments/thoughts. Only for real local bash commands. Requires user confirmation.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "command": {
                                 "type": "string",
-                                "description": "The bash command to run."
+                                "description": "The exact bash command to execute."
                             }
                         },
                         "required": ["command"]
@@ -510,12 +510,17 @@ Singleton {
         return aiMessage;
     }
 
-    function removeMessage(index) {
-        if (index < 0 || index >= messageIDs.length) return;
-        const id = root.messageIDs[index];
-        root.messageIDs.splice(index, 1);
+    function removeMessage(target) {
+        let messageId = target;
+        if (typeof target === "number") {
+            if (target < 0 || target >= root.messageIDs.length) return;
+            messageId = root.messageIDs[target];
+        }
+        const idx = root.messageIDs.indexOf(messageId);
+        if (idx < 0) return;
+        root.messageIDs.splice(idx, 1);
         root.messageIDs = [...root.messageIDs];
-        delete root.messageByID[id];
+        delete root.messageByID[messageId];
     }
 
     function addApiKeyAdvice(model) {
@@ -821,21 +826,28 @@ Singleton {
         root.pendingFilePaths = [];
     }
 
-    function regenerate(messageIndex) {
-        if (messageIndex < 0 || messageIndex >= messageIDs.length) return;
-        const id = root.messageIDs[messageIndex];
-        const message = root.messageByID[id];
+    function regenerate(target) {
+        let messageId = target;
+        if (typeof target === "number") {
+            if (target < 0 || target >= root.messageIDs.length) return;
+            messageId = root.messageIDs[target];
+        }
+        const idx = root.messageIDs.indexOf(messageId);
+        if (idx < 0) return;
+        const message = root.messageByID[messageId];
         if (!message) return;
         if (message.role === "assistant") {
-            // Remove all messages starting from this assistant message onwards
-            for (let i = root.messageIDs.length - 1; i >= messageIndex; i--) {
-                root.removeMessage(i);
+            // Remove this assistant message and all messages after it
+            const idsToRemove = root.messageIDs.slice(idx);
+            for (let i = idsToRemove.length - 1; i >= 0; i--) {
+                root.removeMessage(idsToRemove[i]);
             }
             requester.makeRequest();
         } else if (message.role === "user") {
             // Remove all messages after this user message
-            for (let i = root.messageIDs.length - 1; i > messageIndex; i--) {
-                root.removeMessage(i);
+            const idsToRemove = root.messageIDs.slice(idx + 1);
+            for (let i = idsToRemove.length - 1; i >= 0; i--) {
+                root.removeMessage(idsToRemove[i]);
             }
             requester.makeRequest();
         }
@@ -980,6 +992,13 @@ Singleton {
         } else if (name === "run_shell_command") {
             if (!args.command || args.command.length === 0) {
                 addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `command`."));
+                return;
+            }
+            const lines = args.command.trim().split("\n").map(l => l.trim()).filter(l => l.length > 0);
+            const isOnlyComments = lines.length > 0 && lines.every(l => l.startsWith("#"));
+            if (isOnlyComments) {
+                addFunctionOutputMessage(name, Translation.tr("Error: The command contains only comments or thoughts. DO NOT use run_shell_command for thinking or searching. If you need web information, call 'switch_to_search_mode'. If answering directly, respond in text."));
+                requester.makeRequest();
                 return;
             }
             const contentToAppend = `\n\n**Command execution request**\n\n\`\`\`command\n${args.command}\n\`\`\``;
