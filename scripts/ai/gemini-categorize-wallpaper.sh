@@ -29,33 +29,46 @@ fi
 B64DATA="$(base64 $B64FLAGS $RESIZED_IMG_PATH)"
 # echo $B64DATA
 
-# Prepare request data
-payload='{
-    "contents": [{
-        "parts":[
-            {
-                "inline_data": {
-                "mime_type":"image/jpeg",
-                "data": "'"$B64DATA"'"
-                }
+# Prepare request data with jq so prompt/filename contents can never break the JSON
+payload=$(jq -n \
+    --arg b64 "$B64DATA" \
+    --arg prompt_text "$PROMPT" \
+    '{
+        contents: [{
+            parts: [
+                {
+                    inline_data: {
+                        mime_type: "image/jpeg",
+                        data: $b64
+                    }
+                },
+                { text: $prompt_text }
+            ]
+        }],
+        generationConfig: {
+            responseMimeType: "text/x.enum",
+            responseSchema: {
+                type: "string",
+                enum: [ "abstract", "anime", "city", "minimalist", "landscape", "plants", "person", "space" ]
             },
-            {"text": "'"$PROMPT"'"}
-        ]
-    }],
-    "generationConfig": {
-        "responseMimeType": "text/x.enum",
-        "responseSchema": {
-            "type": "string",
-            "enum": [ "abstract", "anime", "city", "minimalist", "landscape", "plants", "person", "space" ]
-        },
-        "temperature": 0
-    }
-}'
+            temperature: 0
+        }
+    }')
 # echo "$payload" | jq
+
+# Pass the API key via an ephemeral 0600 file instead of argv,
+# so it never shows up in process listings (/proc/*/cmdline)
+auth_file=$(mktemp)
+if [[ -z "$auth_file" ]]; then
+    echo "Error: could not create temporary auth file" >&2
+    exit 1
+fi
+trap 'rm -f "$auth_file"' EXIT
+printf '%s\n' "x-goog-api-key: ${API_KEY}" > "$auth_file"
 
 # Make the request
 response=$(curl "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent" \
--H "x-goog-api-key: $API_KEY" \
+-H "@$auth_file" \
 -H 'Content-Type: application/json' \
 -X POST \
 -d "$payload" 2> /dev/null)

@@ -248,25 +248,39 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 6
                     Layout.topMargin: 0
-                    sourceComponent: RowLayout {
-                        Item { Layout.fillWidth: true }
-                        ButtonGroup {
-                            GroupButton {
-                                contentItem: StyledText {
-                                    text: Translation.tr("Reject")
-                                    font.pixelSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colOnLayer2
+                    sourceComponent: ColumnLayout {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        spacing: 3
+                        StyledText {
+                            visible: root.messageData?.privileged ?? false
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colError
+                            text: Translation.tr("Privileged command: your password will be requested")
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Item { Layout.fillWidth: true }
+                            ButtonGroup {
+                                GroupButton {
+                                    contentItem: StyledText {
+                                        text: Translation.tr("Reject")
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: Appearance.colors.colOnLayer2
+                                    }
+                                    onClicked: Ai.rejectCommand(root.messageData)
                                 }
-                                onClicked: Ai.rejectCommand(root.messageData)
-                            }
-                            GroupButton {
-                                toggled: true
-                                contentItem: StyledText {
-                                    text: Translation.tr("Approve")
-                                    font.pixelSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colOnPrimary
+                                GroupButton {
+                                    toggled: true
+                                    contentItem: StyledText {
+                                        text: Translation.tr("Approve")
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: Appearance.colors.colOnPrimary
+                                    }
+                                    onClicked: Ai.approveCommand(root.messageData)
                                 }
-                                onClicked: Ai.approveCommand(root.messageData)
                             }
                         }
                     }

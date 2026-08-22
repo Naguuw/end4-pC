@@ -14,6 +14,14 @@ import zlib
 
 MAX_CHARS = 2500
 
+
+class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        is_safe, error_msg = is_safe_url(newurl)
+        if not is_safe:
+            raise urllib.error.URLError(f"Redirect to '{newurl}' blocked: {error_msg}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
 def is_safe_url(url: str) -> tuple[bool, str]:
     """Validates the URL to prevent SSRF and access to local/private networks."""
     try:
@@ -163,26 +171,44 @@ def fetch_url(url: str) -> str:
 
     # Standard web page fetch
     try:
+        opener = urllib.request.build_opener(SafeRedirectHandler)
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with opener.open(req, timeout=10) as resp:
+            final_url = resp.geturl()
+            # Defense in depth: validate where we actually ended up
+            if final_url != url:
+                is_safe, error_msg = is_safe_url(final_url)
+                if not is_safe:
+                    return f"Security Error: redirect landed on blocked target ({error_msg})"
             content_type = resp.headers.get("Content-Type", "").lower()
             content_encoding = resp.headers.get("Content-Encoding", "").lower()
             raw_bytes = resp.read(300000)  # Read at most 300KB
 
+            decompression_failed = False
             # Handle gzip / deflate decompression
-            if "gzip" in content_encoding:
+            if "gzip" in content_encoding or raw_bytes[:2] == b"\x1f\x8b":
                 try:
                     raw_bytes = gzip.decompress(raw_bytes)
                 except Exception:
-                    pass
+                    # Truncated stream: try streaming decompressor to salvage partial data
+                    try:
+                        dec = zlib.decompressobj(16 + zlib.MAX_WBITS)
+                        raw_bytes = dec.decompress(raw_bytes)
+                    except Exception:
+                        decompression_failed = True
             elif "deflate" in content_encoding:
                 try:
                     raw_bytes = zlib.decompress(raw_bytes)
                 except Exception:
-                    pass
+                    try:
+                        raw_bytes = zlib.decompress(raw_bytes, -zlib.MAX_WBITS)
+                    except Exception:
+                        decompression_failed = True
 
             charset = resp.headers.get_content_charset() or "utf-8"
             raw_text = raw_bytes.decode(charset, errors="ignore")
+            if decompression_failed:
+                raw_text = f"[Warning: response body could not be fully decompressed]\n{raw_text}"
 
             if "json" in content_type:
                 try:

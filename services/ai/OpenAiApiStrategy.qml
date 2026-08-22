@@ -2,7 +2,9 @@ import QtQuick
 
 ApiStrategy {
     property bool isReasoning: false
-    
+    // Streaming tool calls arrive as fragments across chunks; accumulate them
+    property var pendingToolCalls: ({})  // index -> { id, name, arguments }
+
     function buildEndpoint(model: AiModel): string {
         // console.log("[AI] Endpoint: " + model.endpoint);
         return model.endpoint;
@@ -28,7 +30,30 @@ ApiStrategy {
     }
 
     function buildAuthorizationHeader(apiKeyEnvVarName: string): string {
-        return `-H "Authorization: Bearer \$\{${apiKeyEnvVarName}\}"`;
+        return `Authorization: Bearer \${${apiKeyEnvVarName}}`;
+    }
+
+    function flushPendingToolCalls(message) {
+        const indices = Object.keys(pendingToolCalls);
+        if (indices.length === 0) return null;
+        const call = pendingToolCalls[indices[0]];
+        pendingToolCalls = ({});
+
+        let args = {};
+        if (call.arguments && call.arguments.length > 0) {
+            try {
+                args = JSON.parse(call.arguments);
+            } catch (e) {
+                console.log("[AI] OpenAI: Could not parse tool call arguments: ", e);
+            }
+        }
+
+        const newContent = `\n\nFunction: ${call.name}(${call.arguments})\n`;
+        message.rawContent += newContent;
+
+        message.functionName = call.name;
+        message.functionCall = { name: call.name, args: args, id: call.id };
+        return { functionCall: { name: call.name, args: args, id: call.id } };
     }
 
     function parseResponseLine(line, message) {
@@ -39,13 +64,19 @@ ApiStrategy {
         }
 
         // console.log("[AI] OpenAI: Data:", cleanData);
-        
+
         // Handle special cases
         if (!cleanData || cleanData.startsWith(":")) return {};
         if (cleanData === "[DONE]") {
+            // Stream may end without an explicit tool_calls finish reason
+            const flushed = flushPendingToolCalls(message);
+            if (flushed) {
+                flushed.finished = true;
+                return flushed;
+            }
             return { finished: true };
         }
-        
+
         // Real stuff
         try {
             const dataJson = JSON.parse(cleanData);
@@ -62,6 +93,22 @@ ApiStrategy {
 
             const responseContent = dataJson.choices[0]?.delta?.content || dataJson.message?.content;
             const responseReasoning = dataJson.choices[0]?.delta?.reasoning || dataJson.choices[0]?.delta?.reasoning_content;
+            const deltaToolCalls = dataJson.choices[0]?.delta?.tool_calls;
+            const finishReason = dataJson.choices[0]?.finish_reason;
+
+            // Accumulate streamed tool call fragments
+            if (deltaToolCalls && deltaToolCalls.length > 0) {
+                for (let i = 0; i < deltaToolCalls.length; i++) {
+                    const tc = deltaToolCalls[i];
+                    const idx = tc.index ?? 0;
+                    if (!pendingToolCalls[idx]) pendingToolCalls[idx] = { id: "", name: "", arguments: "" };
+                    if (tc.id) pendingToolCalls[idx].id = tc.id;
+                    const fnName = tc.function?.name;
+                    if (fnName) pendingToolCalls[idx].name += fnName;
+                    const argsFragment = tc.function?.arguments;
+                    if (argsFragment) pendingToolCalls[idx].arguments += argsFragment;
+                }
+            }
 
             if (responseContent && responseContent.length > 0) {
                 if (isReasoning) {
@@ -81,8 +128,16 @@ ApiStrategy {
                 newContent = responseReasoning;
             }
 
-            message.content += newContent;
-            message.rawContent += newContent;
+            if (newContent.length > 0) {
+                message.content += newContent;
+                message.rawContent += newContent;
+            }
+
+            // Emit the completed tool call once the model finishes the turn
+            if (finishReason === "tool_calls") {
+                const flushed = flushPendingToolCalls(message);
+                if (flushed) return flushed;
+            }
 
             // Usage metadata
             if (dataJson.usage) {
@@ -96,25 +151,28 @@ ApiStrategy {
             }
 
             if (dataJson.done) {
+                const flushed = flushPendingToolCalls(message);
+                if (flushed) {
+                    flushed.finished = true;
+                    return flushed;
+                }
                 return { finished: true };
             }
-            
+
         } catch (e) {
             console.log("[AI] OpenAI: Could not parse line: ", e);
-            message.rawContent += line;
-            message.content += line;
         }
-        
+
         return {};
-    }
-    
-    function onRequestFinished(message) {
-        // OpenAI format doesn't need special finish handling
-        return {};
-    }
-    
-    function reset() {
-        isReasoning = false;
     }
 
+    function onRequestFinished(message) {
+        // Flush any tool call that completed right at stream end
+        return flushPendingToolCalls(message) ?? {};
+    }
+
+    function reset() {
+        isReasoning = false;
+        pendingToolCalls = ({});
+    }
 }

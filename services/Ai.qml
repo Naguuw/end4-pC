@@ -363,11 +363,16 @@ Singleton {
         }
     }
 
-    property string requestScriptFilePath: "/tmp/quickshell/ai/request.sh"
+    readonly property string requestScriptDir: {
+        const runtime = Quickshell.env("XDG_RUNTIME_DIR");
+        return (runtime && runtime.length > 0) ? `${runtime}/quickshell/ai` : "/tmp/quickshell/ai";
+    }
+    property string requestScriptFilePath: `${root.requestScriptDir}/request.sh`
     property string pendingFilePath: pendingFilePaths[0] ?? ""
     property var pendingFilePaths: []
 
     Component.onCompleted: {
+        Quickshell.execDetached(["mkdir", "-p", root.requestScriptDir]); // Ensure runtime dir exists
         setModel(currentModelId, false, false); // Do necessary setup for model
         root.addUserModels() // Config onReadyChanged above might not fire if config is loaded before this service
     }
@@ -610,7 +615,8 @@ Singleton {
         if (model.requires_key) {
             const key = root.apiKeys[model.key_id];
             if (key) {
-                root.addMessage(Translation.tr("API key:\n\n```txt\n%1\n```").arg(key), Ai.interfaceRole);
+                const message = root.addMessage(Translation.tr("API key:\n\n```txt\n%1\n```").arg(key), Ai.interfaceRole);
+                if (message) message.sensitive = true; // Never persist to chat logs
             } else {
                 root.addMessage(Translation.tr("No API key set for %1").arg(model.name), Ai.interfaceRole);
             }
@@ -633,9 +639,11 @@ Singleton {
 
     function stopResponse() {
         if (requester.running) {
+            requester.stoppedByUser = true;
             requester.running = false;
         }
         if (commandExecutionProc.running) {
+            commandExecutionProc.stoppedByUser = true;
             commandExecutionProc.running = false;
         }
     }
@@ -649,6 +657,7 @@ Singleton {
         property list<string> baseCommand: ["bash"]
         property AiMessageData message
         property ApiStrategy currentStrategy
+        property bool stoppedByUser: false
 
         function markDone() {
             requester.message.done = true;
@@ -662,6 +671,7 @@ Singleton {
 
         function makeRequest() {
             const model = models[currentModelId];
+            requester.stoppedByUser = false;
 
             // Fetch API keys if needed
             if (model?.requires_key && !KeyringStorage.loaded) KeyringStorage.fetchKeyringData();
@@ -712,9 +722,23 @@ Singleton {
             // console.log("Request headers: ", JSON.stringify(requestHeaders));
             // console.log("Header string: ", headerString);
 
-            /* Get authorization header from strategy */
-            const authHeader = requester.currentStrategy.buildAuthorizationHeader(root.apiKeyEnvVarName);
-            
+            /* Get authorization header line from strategy */
+            let scriptAuthSetup = "";
+            let authCurlArgs = "";
+            if (model.requires_key) {
+                const authHeaderLine = requester.currentStrategy.buildAuthorizationHeader(root.apiKeyEnvVarName);
+                if (authHeaderLine && authHeaderLine.length > 0) {
+                    // Pass the key via an ephemeral 0600 header file instead of argv,
+                    // so it never shows up in process listings (/proc/*/cmdline)
+                    scriptAuthSetup += "# Auth header via ephemeral file to keep the key out of argv\n";
+                    scriptAuthSetup += `ai_auth_header_file=$(mktemp)\n`;
+                    scriptAuthSetup += `if [[ -z "$ai_auth_header_file" ]]; then exit 1; fi\n`;
+                    scriptAuthSetup += `trap 'rm -f "\${ai_gs_auth_file:-}" "$ai_auth_header_file"' EXIT\n`;
+                    scriptAuthSetup += `printf '%s\\n' "` + authHeaderLine + `" > "$ai_auth_header_file"\n`;
+                    authCurlArgs = ` -H "@$ai_auth_header_file"`;
+                }
+            }
+
             /* Script shebang */
             const scriptShebang = "#!/usr/bin/env bash\n";
 
@@ -728,12 +752,12 @@ Singleton {
             let scriptRequestContent = ""
             scriptRequestContent += `curl --no-buffer "${endpoint}"`
                 + ` ${headerString}`
-                + (authHeader ? ` ${authHeader}` : "")
+                + authCurlArgs
                 + ` --data '${CF.StringUtils.shellSingleQuoteEscape(JSON.stringify(data))}'`
                 + "\n"
-            
+
             /* Send the request */
-            const scriptContent = requester.currentStrategy.finalizeScriptContent(scriptShebang + scriptFileSetupContent + scriptRequestContent, activeFilePaths)
+            const scriptContent = requester.currentStrategy.finalizeScriptContent(scriptShebang + scriptAuthSetup + scriptFileSetupContent + scriptRequestContent, activeFilePaths)
             const shellScriptPath = CF.FileUtils.trimFileProtocol(root.requestScriptFilePath)
             requesterScriptFile.path = Qt.resolvedUrl(shellScriptPath)
             requesterScriptFile.setText(scriptContent)
@@ -774,13 +798,23 @@ Singleton {
         }
 
         onExited: (exitCode, exitStatus) => {
+            const wasStopped = requester.stoppedByUser;
+            requester.stoppedByUser = false;
             const result = requester.currentStrategy.onRequestFinished(requester.message);
-            
+
+            // A function call in the final buffered chunk must not be dropped
+            if (result.functionCall) {
+                requester.message.functionCall = result.functionCall;
+                root.handleFunctionCall(result.functionCall.name, result.functionCall.args, requester.message);
+            }
+
             if (result.finished) {
                 requester.markDone();
             } else if (!requester.message.done) {
                 requester.markDone();
             }
+
+            if (wasStopped) return; // User pressed stop: never continue automatically
 
             // Handle error responses
             if (requester.message.content.includes("API key not valid")) {
@@ -889,11 +923,27 @@ Singleton {
         if (!message.functionPending) return;
         message.functionPending = false; // User decided, no more "thinking"
         addFunctionOutputMessage(message.functionName, Translation.tr("Command rejected by user"))
+        requester.makeRequest(); // Let the model know it was rejected
     }
 
     function approveCommand(message: AiMessageData) {
         if (!message.functionPending) return;
         message.functionPending = false; // User decided, no more "thinking"
+
+        const args = message.functionCall?.args ?? {};
+
+        if (message.functionName === "set_shell_config") {
+            let value = args.value;
+            try {
+                value = JSON.parse(args.value);
+            } catch (e) {
+                // Keep as raw string if not JSON
+            }
+            Config.setNestedValue(String(args.key), value);
+            addFunctionOutputMessage(message.functionName, `Config '${args.key}' successfully set to ${JSON.stringify(value)}.`);
+            requester.makeRequest();
+            return;
+        }
 
         const responseMessage = createFunctionOutputMessage(message.functionName, "", false);
         const id = idForMessage(responseMessage);
@@ -902,7 +952,20 @@ Singleton {
 
         commandExecutionProc.message = responseMessage;
         commandExecutionProc.baseMessageContent = responseMessage.content;
-        commandExecutionProc.shellCommand = message.functionCall.args.command;
+        if (message.privileged) {
+            // Force fresh-password mode: `-k` ignores cached credentials so the
+            // user must type their password EVERY time, and `-A` routes that
+            // prompt through the GUI dialog. The password never flows through
+            // the conversation, so it can never reach the API server.
+            const askpassPath = CF.FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/sudo-askpass.sh`);
+            commandExecutionProc.shellCommand =
+                // export is required: an un-exported variable would never reach the sudo process
+                `export SUDO_ASKPASS='${CF.StringUtils.shellSingleQuoteEscape(askpassPath)}'` + "\n"
+                + String(message.functionCall.args.command).replace(/\bsudo\s+(?:(?:-{1,2}S\b|--stdin\b|-A\b|-k\b|-K\b|-n\b)\s+)*/g, "sudo -k -A ");
+            commandExecutionProc.message.functionResponse += Translation.tr("[[ sudo: cached credentials ignored (-k), password prompted every time ]]") + "\n";
+        } else {
+            commandExecutionProc.shellCommand = message.functionCall.args.command;
+        }
         commandExecutionProc.running = true; // Start the command execution
     }
 
@@ -911,6 +974,7 @@ Singleton {
         property string shellCommand: ""
         property AiMessageData message
         property string baseMessageContent: ""
+        property bool stoppedByUser: false
         command: ["bash", "-c", shellCommand]
         stdout: SplitParser {
             onRead: (output) => {
@@ -927,6 +991,13 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
+            if (commandExecutionProc.stoppedByUser) {
+                // User aborted: inform the model and stop, do not continue the conversation
+                commandExecutionProc.stoppedByUser = false;
+                commandExecutionProc.message.functionResponse += Translation.tr("[Command execution stopped by user]") + "\n";
+                root.saveChat("lastSession");
+                return;
+            }
             commandExecutionProc.message.functionResponse += `[[ Command exited with code ${exitCode} (${exitStatus}) ]]\n`;
             requester.makeRequest(); // Continue
         }
@@ -951,9 +1022,29 @@ Singleton {
         }
     }
 
+    /**
+     * Classifies a proposed shell command for safe privileged execution.
+     * Returns { privileged, blockedReason }:
+     * - privileged: uses sudo; approval will require the user's typed password via GUI
+     * - blockedReason: non-null when the command must never be executed as proposed
+     */
+    function classifyShellCommand(command) {
+        const result = { privileged: false, blockedReason: null };
+        if (!/\bsudo\b/.test(command)) return result;
+        result.privileged = true;
+        // The password must come from the user's dialog, never from stdin/files
+        if (/\bsudo\s+(?:-{1,2}S\b|--stdin\b)|\|\s*sudo\b/.test(command)) {
+            result.blockedReason = Translation.tr("Passwords must be typed by you in a secure dialog, not piped into sudo.");
+        }
+        // The sudoers configuration itself is off-limits through the assistant
+        if (/\/etc\/sudoers|\bsudoers\.d\b|\bvisudo\b/.test(command)) {
+            result.blockedReason = result.blockedReason ?? Translation.tr("Modifying the sudoers configuration through the assistant is not allowed.");
+        }
+        return result;
+    }
+
     function handleFunctionCall(name, args: var, message: AiMessageData) {
         if (name === "switch_to_search_mode") {
-            const modelId = root.currentModelId;
             root.currentTool = "search"
             root.postResponseHook = () => { root.currentTool = "functions" }
             addFunctionOutputMessage(name, Translation.tr("Switched to search mode. Now searching the web."))
@@ -990,17 +1081,19 @@ Singleton {
                 addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `key` and `value`."));
                 return;
             }
-            const key = args.key;
-            let value = args.value;
+            let parsedValue = args.value;
             // Parse JSON values (booleans, numbers, arrays, objects) if provided as string
             try {
-                value = JSON.parse(args.value);
+                parsedValue = JSON.parse(args.value);
             } catch (e) {
                 // Keep as raw string if not JSON
             }
-            Config.setNestedValue(key, value);
-            addFunctionOutputMessage(name, `Config '${key}' successfully set to ${JSON.stringify(value)}.`);
-            requester.makeRequest();
+            // Require explicit user approval before applying anything,
+            // otherwise injected web/chat content could silently alter config
+            const contentToAppend = `\n\n**Config change request**\n\n\`\`\`command\nset_shell_config\n${args.key} = ${JSON.stringify(parsedValue)}\`\`\``;
+            message.rawContent += contentToAppend;
+            message.content += contentToAppend;
+            message.functionPending = true; // Wait for user approval
         } else if (name === "run_shell_command") {
             if (!args.command || args.command.length === 0) {
                 addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `command`."));
@@ -1013,7 +1106,15 @@ Singleton {
                 requester.makeRequest();
                 return;
             }
-            const contentToAppend = `\n\n**Command execution request**\n\n\`\`\`command\n${args.command}\n\`\`\``;
+            // Security gate for privileged commands
+            const classification = classifyShellCommand(args.command);
+            if (classification.blockedReason) {
+                addFunctionOutputMessage(name, Translation.tr("Rejected: %1").arg(classification.blockedReason));
+                requester.makeRequest();
+                return;
+            }
+            message.privileged = classification.privileged;
+            const contentToAppend = `\n\n**Command execution request**\n\n\`\`\`command\n${args.command}\`\`\``;
             message.rawContent += contentToAppend;
             message.content += contentToAppend;
             message.functionPending = true; // Use thinking to indicate the command is waiting for approval
@@ -1024,9 +1125,11 @@ Singleton {
     function chatToJson() {
         return root.messageIDs.map(id => {
             const message = root.messageByID[id]
+            // Redact sensitive content (e.g. printed API keys) before persisting
+            const persistedContent = message.sensitive ? Translation.tr("[redacted for your safety]") : message.rawContent
             return ({
                 "role": message.role,
-                "rawContent": message.rawContent,
+                "rawContent": persistedContent,
                 "fileMimeType": message.fileMimeType,
                 "fileUri": message.fileUri,
                 "localFilePath": message.localFilePath,

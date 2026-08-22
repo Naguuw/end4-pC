@@ -2,7 +2,8 @@ import QtQuick
 
 ApiStrategy {
     property bool isReasoning: false
-    
+    property var pendingToolCalls: ({})  // index -> { id, name, arguments }
+
     function buildEndpoint(model: AiModel): string {
         // console.log("[AI] Endpoint: " + model.endpoint);
         return model.endpoint;
@@ -39,7 +40,31 @@ ApiStrategy {
     }
 
     function buildAuthorizationHeader(apiKeyEnvVarName: string): string {
-        return `-H "Authorization: Bearer \$\{${apiKeyEnvVarName}\}"`;
+        return `Authorization: Bearer \${${apiKeyEnvVarName}}`;
+    }
+
+    function flushPendingToolCalls(message) {
+        const indices = Object.keys(pendingToolCalls);
+        if (indices.length === 0) return null;
+        const call = pendingToolCalls[indices[0]];
+        pendingToolCalls = ({});
+
+        let args = {};
+        if (call.arguments && call.arguments.length > 0) {
+            try {
+                args = JSON.parse(call.arguments);
+            } catch (e) {
+                console.log("[AI] Mistral: Could not parse tool call arguments: ", e);
+            }
+        }
+
+        const newContent = `\n\n[[ Function: ${call.name}(${call.arguments}) ]]\n`;
+        message.rawContent += newContent;
+        message.content += newContent;
+
+        message.functionName = call.name;
+        message.functionCall = { name: call.name, args: args, id: call.id };
+        return { functionCall: { name: call.name, args: args, id: call.id } };
     }
 
     function parseResponseLine(line, message) {
@@ -48,13 +73,18 @@ ApiStrategy {
         if (cleanData.startsWith("data:")) {
             cleanData = cleanData.slice(5).trim();
         }
-        
+
         // Handle special cases
         if (!cleanData || cleanData.startsWith(":")) return {};
         if (cleanData === "[DONE]") {
+            const flushed = flushPendingToolCalls(message);
+            if (flushed) {
+                flushed.finished = true;
+                return flushed;
+            }
             return { finished: true };
         }
-        
+
         // Real stuff
         try {
             const dataJson = JSON.parse(cleanData);
@@ -71,22 +101,23 @@ ApiStrategy {
 
             const responseContent = dataJson.choices[0]?.delta?.content || dataJson.message?.content;
             const responseReasoning = dataJson.choices[0]?.delta?.reasoning || dataJson.choices[0]?.delta?.reasoning_content;
+            const deltaToolCalls = dataJson.choices[0]?.delta?.tool_calls;
+            const finishReason = dataJson.choices[0]?.finish_reason;
 
-            // Function call
-            if (dataJson.choices[0]?.delta?.tool_calls) {
-                const functionCall = dataJson.choices[0].delta.tool_calls[0];
-                const functionName = functionCall.function.name;
-                const functionArgs = JSON.parse(functionCall.function.arguments) || {}; // Args are given as string???
-                const functionId = functionCall.id;
-                const newContent = `\n\n[[ Function: ${functionName}(${JSON.stringify(functionArgs, null, 2)}) ]]\n`;
-                message.rawContent += newContent;
-                message.content += newContent;
-                message.functionName = functionName;
-                message.functionCall = functionName; 
-                return { functionCall: { name: functionName, args: functionArgs, id: functionId } };
+            // Accumulate streamed tool call fragments
+            if (deltaToolCalls && deltaToolCalls.length > 0) {
+                for (let i = 0; i < deltaToolCalls.length; i++) {
+                    const tc = deltaToolCalls[i];
+                    const idx = tc.index ?? 0;
+                    if (!pendingToolCalls[idx]) pendingToolCalls[idx] = { id: "", name: "", arguments: "" };
+                    if (tc.id) pendingToolCalls[idx].id = tc.id;
+                    const fnName = tc.function?.name;
+                    if (fnName) pendingToolCalls[idx].name += fnName;
+                    const argsFragment = tc.function?.arguments;
+                    if (argsFragment) pendingToolCalls[idx].arguments += argsFragment;
+                }
             }
 
-            // Thinking?
             if (responseContent && responseContent.length > 0) {
                 if (isReasoning) {
                     isReasoning = false;
@@ -105,9 +136,16 @@ ApiStrategy {
                 newContent = responseReasoning;
             }
 
-            // Text
-            message.content += newContent;
-            message.rawContent += newContent;
+            if (newContent.length > 0) {
+                message.content += newContent;
+                message.rawContent += newContent;
+            }
+
+            // Emit the completed tool call once the model finishes the turn
+            if (finishReason === "tool_calls" || finishReason === "function_call") {
+                const flushed = flushPendingToolCalls(message);
+                if (flushed) return flushed;
+            }
 
             // Usage metadata
             if (dataJson.usage) {
@@ -120,25 +158,29 @@ ApiStrategy {
                 };
             }
 
-            if (`dataJson`.done) {
+            if (dataJson.done) {
+                const flushed = flushPendingToolCalls(message);
+                if (flushed) {
+                    flushed.finished = true;
+                    return flushed;
+                }
                 return { finished: true };
             }
-            
+
         } catch (e) {
             console.log("[AI] Mistral: Could not parse line: ", e);
-            message.rawContent += line;
-            message.content += line;
         }
-        
+
         return {};
-    }
-    
-    function onRequestFinished(message) {
-        return {};
-    }
-    
-    function reset() {
-        isReasoning = false;
     }
 
+    function onRequestFinished(message) {
+        // Flush any tool call that completed right at stream end
+        return flushPendingToolCalls(message) ?? {};
+    }
+
+    function reset() {
+        isReasoning = false;
+        pendingToolCalls = ({});
+    }
 }

@@ -298,12 +298,18 @@ Singleton {
 
     /**
      * Replaces common LaTeX symbols, commands, and math notation with clean Unicode equivalents.
+     * Inline code spans are protected from any transformation.
      * @param { string } text
      * @returns { string }
      */
     function replaceCommonLatexSymbols(text) {
         if (!text) return "";
         let res = text;
+
+        // 0. Protect inline code spans (`...`) from all transformations below
+        const stash = [];
+        const stashIt = (s) => { stash.push(s); return `\u0000${stash.length - 1}\u0000`; };
+        res = res.replace(/`[^`\n]*`/g, stashIt);
 
         // 1. Clean up stray markdown latex image links if any
         res = res.replace(/!\[latex\]\([^)]+\)/g, "");
@@ -374,14 +380,24 @@ Singleton {
         res = res.replace(/\\\[([\s\S]*?)\\\]/g, "$1");
         res = res.replace(/\\\(([\s\S]*?)\\\)/g, "$1");
 
-        // 9. Strip paired $ delimiters around non-currency expressions (e.g. $x + y = z$, but not $0.10)
+        // 9. Strip paired $ delimiters ONLY around clearly-LaTeX content.
+        // Keeps env vars ($PATH), shell snippets and prices ($0.10) intact.
         res = res.replace(/(^|[^$\d])\$([^$\n]+?)\$(?=[^$\d]|$)/g, (match, prefix, inner) => {
-            // Keep if it looks purely like a single price ($0.10 or $5)
-            if (/^\d+(\.\d+)?$/.test(inner.trim())) {
+            // Keep prices like $5 or $0.10 (optionally with %)
+            if (/^\d+(\.\d+)?%?$/.test(inner.trim())) {
+                return match;
+            }
+            // Only strip when the content actually looks like math/LaTeX
+            if (!/(\\[a-zA-Z]+|\^|_|\{|\})/.test(inner)) {
                 return match;
             }
             return prefix + inner;
         });
+
+        // 10. Restore protected inline code spans
+        for (let i = 0; i < stash.length; i++) {
+            res = res.split(`\u0000${i}\u0000`).join(stash[i]);
+        }
 
         return res;
     }
