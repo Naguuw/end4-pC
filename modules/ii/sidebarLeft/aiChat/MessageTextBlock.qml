@@ -20,80 +20,10 @@ ColumnLayout {
     property bool done: true
     property bool forceDisableChunkSplitting: false
 
-    property list<string> renderedLatexHashes: []
-    property string renderedSegmentContent: ""
-    property string shownText: ""
+    property string shownText: StringUtils.replaceCommonLatexSymbols(segmentContent ?? "")
     property bool fadeChunkSplitting: !forceDisableChunkSplitting && !/\n\|/.test(shownText) && Config.options.sidebar.ai.textFadeIn
 
     Layout.fillWidth: true
-
-    Timer {
-        id: renderTimer
-        interval: 1000
-        repeat: false
-        onTriggered: {
-            renderLatex()
-            for (const hash of renderedLatexHashes) {
-                handleRenderedLatex(hash, true);
-            }
-        }
-    }
-
-    function renderLatex() {
-        // Regex for $...$, $$...$$, \[...\]
-        // Note: This is a simple approach and may need refinement for edge cases
-        let regex = /(\$\$([\s\S]+?)\$\$)|(\$([^\$]+?)\$)|(\\\[((?:.|\n)+?)\\\])|(\\\(([\s\S]+?)\\\))/g;
-        let match;
-        while ((match = regex.exec(segmentContent)) !== null) {
-            let expression = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || match[7] || match[8];
-            if (expression) {
-                Qt.callLater(() => {
-                    const [renderHash, isNew] = LatexRenderer.requestRender(expression.trim());
-                    if (!renderedLatexHashes.includes(renderHash)) {
-                        renderedLatexHashes.push(renderHash);
-                    }
-                });
-            }
-        }
-    }
-
-    function handleRenderedLatex(hash, force = false) {
-        if (renderedLatexHashes.includes(hash) || force) {
-            const imagePath = LatexRenderer.renderedImagePaths[hash];
-            const markdownImage = `![latex](${imagePath})`;
-
-            const expression = LatexRenderer.processedExpressions[hash];
-            renderedSegmentContent = renderedSegmentContent.split(expression).join(markdownImage);
-        }
-    }
-
-    onDoneChanged: {
-        renderTimer.restart();
-    }
-
-    onSegmentContentChanged: {
-        renderedSegmentContent = StringUtils.replaceCommonLatexSymbols(segmentContent);
-        if (segmentContent) {
-            root.renderLatex();
-        }
-    }
-
-    onRenderedSegmentContentChanged: {
-        if (renderedSegmentContent) {
-            root.shownText = renderedSegmentContent;
-        }
-    }
-
-    // When something finishes rendering
-    // 1. Check if the hash is in the list
-    // 2. If it is, replace the expression with the image path
-    Connections {
-        target: LatexRenderer
-        function onRenderFinished(hash, imagePath) {
-            const expression = LatexRenderer.processedExpressions[hash];
-            handleRenderedLatex(hash);
-        }
-    }
 
     spacing: 0
     Repeater {

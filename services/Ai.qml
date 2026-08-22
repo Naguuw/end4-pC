@@ -511,13 +511,19 @@ Singleton {
     }
 
     function removeMessage(target) {
+        if (!target && target !== 0) return;
         let messageId = target;
-        if (typeof target === "number") {
-            if (target < 0 || target >= root.messageIDs.length) return;
-            messageId = root.messageIDs[target];
+        let idx = root.messageIDs.indexOf(messageId);
+        
+        if (idx === -1) {
+            const num = (typeof target === "number") ? target : parseInt(target, 10);
+            if (!isNaN(num) && num >= 0 && num < root.messageIDs.length) {
+                messageId = root.messageIDs[num];
+                idx = num;
+            }
         }
-        const idx = root.messageIDs.indexOf(messageId);
-        if (idx < 0) return;
+        
+        if (idx < 0 || !messageId) return;
         root.messageIDs.splice(idx, 1);
         root.messageIDs = [...root.messageIDs];
         delete root.messageByID[messageId];
@@ -827,13 +833,19 @@ Singleton {
     }
 
     function regenerate(target) {
+        if (!target && target !== 0) return;
         let messageId = target;
-        if (typeof target === "number") {
-            if (target < 0 || target >= root.messageIDs.length) return;
-            messageId = root.messageIDs[target];
+        let idx = root.messageIDs.indexOf(messageId);
+        
+        if (idx === -1) {
+            const num = (typeof target === "number") ? target : parseInt(target, 10);
+            if (!isNaN(num) && num >= 0 && num < root.messageIDs.length) {
+                messageId = root.messageIDs[num];
+                idx = num;
+            }
         }
-        const idx = root.messageIDs.indexOf(messageId);
-        if (idx < 0) return;
+        
+        if (idx < 0 || !messageId) return;
         const message = root.messageByID[messageId];
         if (!message) return;
         if (message.role === "assistant") {
@@ -1060,16 +1072,12 @@ Singleton {
             chatSaveFile.chatName = chatName.trim()
             chatSaveFile.reload()
             const saveContent = chatSaveFile.text()
-            // console.log(saveContent)
             const saveData = JSON.parse(saveContent)
             root.clearMessages()
-            root.messageIDs = saveData.map((_, i) => {
-                return i
-            })
-            // console.log(JSON.stringify(messageIDs))
+            let loadedIDs = []
             for (let i = 0; i < saveData.length; i++) {
                 const message = saveData[i];
-                root.messageByID[i] = root.aiMessageComponent.createObject(root, {
+                const aiMessage = root.aiMessageComponent.createObject(root, {
                     "role": message.role,
                     "rawContent": message.rawContent,
                     "content": message.rawContent,
@@ -1088,7 +1096,11 @@ Singleton {
                     "functionResponse": message.functionResponse,
                     "visibleToUser": message.visibleToUser,
                 });
+                const id = root.idForMessage(aiMessage);
+                loadedIDs.push(id);
+                root.messageByID[id] = aiMessage;
             }
+            root.messageIDs = loadedIDs;
         } catch (e) {
             console.log("[AI] Could not load chat: ", e);
         } finally {
