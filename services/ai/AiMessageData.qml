@@ -22,7 +22,6 @@ QtObject {
     property var functionCall
     property string functionResponse
     property bool functionPending: false
-    // Command uses sudo: execution requires the user's typed password (GUI dialog)
     property bool privileged: false
     property bool visibleToUser: true
     property bool sensitive: false
