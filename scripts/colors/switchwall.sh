@@ -124,6 +124,7 @@ is_video() {
 }
 
 kill_existing_mpvpaper() {
+    pkill -f -9 "mpvpaper-stop" || true
     pkill -f -9 mpvpaper || true
 }
 
@@ -137,7 +138,11 @@ create_restore_script() {
 pkill -f -9 mpvpaper
 
 for monitor in \$(hyprctl monitors -j | jq -r '.[] | .name'); do
-    mpvpaper -o "$VIDEO_OPTS" "\$monitor" "$video_path" &
+    rm -f "/tmp/mpvsocket-\$monitor"
+    mpvpaper -o "$VIDEO_OPTS --input-ipc-server=/tmp/mpvsocket-\$monitor" "\$monitor" "$video_path" &
+    if command -v mpvpaper-stop &>/dev/null; then
+        mpvpaper-stop -p "/tmp/mpvsocket-\$monitor" -f &
+    fi
     sleep 0.1
 done
 EOF
@@ -244,7 +249,11 @@ switch() {
                 local video_path="$imgpath"
                 monitors=$(hyprctl monitors -j | jq -r '.[] | .name')
                 for monitor in $monitors; do
-                    mpvpaper -o "$VIDEO_OPTS" "$monitor" "$video_path" &
+                    rm -f "/tmp/mpvsocket-$monitor"
+                    mpvpaper -o "$VIDEO_OPTS --input-ipc-server=/tmp/mpvsocket-$monitor" "$monitor" "$video_path" &
+                    if command -v mpvpaper-stop &>/dev/null; then
+                        mpvpaper-stop -p "/tmp/mpvsocket-$monitor" -f &
+                    fi
                     sleep 0.1
                 done
             fi

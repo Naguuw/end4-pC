@@ -257,7 +257,7 @@ AbstractBackgroundWidget {
 
                     property string effectiveSource: "file://" + (GlobalStates.screenLocked && Config.options.background.lockWall !== ""
                         ? Config.options.background.lockWall
-                        : Config.options.background.wallpaperPath)
+                        : root.wallpaperPath)
 
                     Image {
                         id: bgImageA

@@ -183,7 +183,7 @@ MouseArea {
                 anchors.fill: parent
                 visible: Config.options.wallpaperSelector.showBlurBackground
                 fillMode: Image.PreserveAspectCrop
-                source: Config.options.background.wallpaperPath
+                source: Config.options.background.wallpaperIsVideo ? Config.options.background.thumbnailPath : Config.options.background.wallpaperPath
                 cache: false
                 layer.enabled: true
                 layer.effect: OpacityMask {

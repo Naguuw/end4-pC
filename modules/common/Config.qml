@@ -371,6 +371,7 @@ Singleton {
                 }
                 property list<string> screenList: [] 
                 property string wallpaperPath: ""
+                readonly property bool wallpaperIsVideo: wallpaperPath.length > 0 && [".mp4", ".webm", ".mkv", ".avi", ".mov"].some(ext => wallpaperPath.toLowerCase().endsWith(ext))
                 property bool centeredWallpaper: false
                 property string centeredWallpaperShape: "Cookie7Sided"
                 property int centeredWallpaperSize: 400
