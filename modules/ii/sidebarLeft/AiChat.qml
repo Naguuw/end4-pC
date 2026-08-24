@@ -533,7 +533,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                             // Detect pasted file URIs (from file manager Ctrl+C then Ctrl+V)
                             // Only intercept if ALL tokens are file:// URIs or absolute paths
                             if (messageInputField.text.includes("file://")) {
-                                const tokens = messageInputField.text.trim().split(/[\r\n,]+/).filter(t => t.trim().length > 0);
+                                const tokens = messageInputField.text.trim().split(/[\r\n]+/).filter(t => t.trim().length > 0);
                                 const allAreFilePaths = tokens.length > 0 && tokens.every(t => t.trim().startsWith("file://") || t.trim().startsWith("/"));
                                 if (allAreFilePaths) {
                                     const textToAttach = messageInputField.text;
@@ -811,6 +811,71 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         }
                     }
                 }
+            }
+        }
+    }
+
+    DropArea {
+        id: chatDropArea
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+
+        onEntered: drag => {
+            drag.accepted = drag.hasUrls
+        }
+
+        onDropped: drop => {
+            const localFiles = drop.urls.filter(url => url.toString().startsWith("file://"));
+            if (localFiles.length === 0) return;
+            Ai.attachFile(localFiles.join("\n"));
+            drop.acceptProposedAction();
+        }
+    }
+
+    Item { // Drag & drop overlay
+        anchors.fill: parent
+        visible: opacity > 0
+        opacity: chatDropArea.containsDrag ? 1 : 0
+        z: 10
+
+        Behavior on opacity {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Appearance.rounding.normal
+            color: Appearance.colors.colLayer0
+            opacity: 0.92
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Appearance.rounding.normal
+            color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.55)
+        }
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 8
+            scale: chatDropArea.containsDrag ? 1 : 0.85
+
+            Behavior on scale {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+
+            MaterialSymbol {
+                Layout.alignment: Qt.AlignHCenter
+                text: "attach_file"
+                iconSize: 64
+                color: Appearance.colors.colPrimary
+            }
+
+            StyledText {
+                Layout.alignment: Qt.AlignHCenter
+                text: Translation.tr("Drop files to attach")
+                font.pixelSize: Appearance.font.pixelSize.large
+                color: Appearance.colors.colPrimary
             }
         }
     }

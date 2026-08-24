@@ -777,14 +777,20 @@ Singleton {
             root.clearPendingFiles();
             return;
         }
-        const tokens = filePath.split(/[\r\n,]+/);
+        const tokens = filePath.split(/[\r\n]+/);
         let newPaths = [...root.pendingFilePaths];
         for (let i = 0; i < tokens.length; i++) {
-            const token = tokens[i].trim();
+            let token = tokens[i].trim();
             if (token.length === 0) continue;
-            const clean = CF.FileUtils.trimFileProtocol(decodeURIComponent(token));
-            if (clean.length > 0 && newPaths.indexOf(clean) === -1) {
-                newPaths.push(clean);
+            if (token.startsWith("file://")) {
+                try {
+                    token = decodeURIComponent(CF.FileUtils.trimFileProtocol(token));
+                } catch (e) {
+                    token = CF.FileUtils.trimFileProtocol(token);
+                }
+            }
+            if (token.length > 0 && newPaths.indexOf(token) === -1) {
+                newPaths.push(token);
             }
         }
         root.pendingFilePaths = newPaths;
