@@ -401,4 +401,26 @@ Singleton {
 
         return res;
     }
+
+    /**
+     * Applies replaceCommonLatexSymbols only OUTSIDE of math regions
+     * ($...$, $$...$$, \(...\), \[...\]) so their content stays verbatim
+     * and can later be replaced with images rendered by LatexRenderer.
+     * @param { string } text
+     * @returns { string }
+     */
+    function replaceNonMathLatexSymbols(text) {
+        if (!text) return "";
+        const mathRegex = /\$\$[\s\S]*?\$\$|\$[^$\n]+?\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g;
+        let res = "";
+        let last = 0;
+        let match;
+        while ((match = mathRegex.exec(text)) !== null) {
+            res += replaceCommonLatexSymbols(text.slice(last, match.index));
+            res += match[0];
+            last = match.index + match[0].length;
+        }
+        res += replaceCommonLatexSymbols(text.slice(last));
+        return res;
+    }
 }

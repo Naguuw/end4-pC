@@ -21,8 +21,7 @@ Singleton {
     property Component aiMessageComponent: AiMessageData {}
     property Component aiModelComponent: AiModel {}
     property Component geminiApiStrategy: GeminiApiStrategy {}
-    property Component openaiApiStrategy: OpenAiApiStrategy {}
-    property Component mistralApiStrategy: MistralApiStrategy {}
+    property Component openaiCompatApiStrategy: OpenAiCompatApiStrategy {}
     readonly property string interfaceRole: "interface"
     readonly property string apiKeyEnvVarName: "API_KEY"
 
@@ -60,7 +59,7 @@ Singleton {
 
     function idForMessage(message) {
         // Generate a unique ID using timestamp and random value
-        return Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+        return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
     }
 
     function safeModelName(modelName) {
@@ -84,186 +83,101 @@ Singleton {
     // Gemini: https://ai.google.dev/gemini-api/docs/function-calling
     // OpenAI: https://platform.openai.com/docs/guides/function-calling
     property string currentTool: Config?.options.ai.tool ?? "search"
-    property var tools: {
-        "gemini": {
-            "functions": [{"functionDeclarations": [
-                {
-                    "name": "switch_to_search_mode",
-                    "description": "Switch to Google Search mode to retrieve real-time data, current events, or web information.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {}
-                    }
-                },
-                {
-                    "name": "get_shell_config",
-                    "description": "Read the desktop shell configuration. Pass 'section' to inspect a specific section (e.g. 'bar', 'appearance', 'ai', 'wallpaper') or omit it to list available top-level sections.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "section": {
-                                "type": "string",
-                                "description": "Specific config section to retrieve (e.g. 'bar', 'appearance', 'ai', 'wallpaper'). Leave empty to get available top-level section keys."
-                            }
-                        }
-                    }
-                },
-                {
-                    "name": "set_shell_config",
-                    "description": "Set a field in the desktop graphical shell configuration. Must only be used after verifying the key with `get_shell_config`.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "key": {
-                                "type": "string",
-                                "description": "The exact configuration key path to set, e.g. `bar.borderless` or `wallpaper.enableBlur`. MUST NOT BE GUESSED."
-                            },
-                            "value": {
-                                "type": "string",
-                                "description": "The value to set formatted as a string/JSON, e.g. 'true', 'false', '12', or '\"blur\"'."
-                            }
-                        },
-                        "required": ["key", "value"]
-                    }
-                },
-                {
-                    "name": "run_shell_command",
-                    "description": "Run a quick, non-interactive local bash command and get its output. DO NOT use this tool for web searches (use switch_to_search_mode for searching) or for writing comments/thoughts. Only for real local bash commands. Requires user confirmation.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "command": {
-                                "type": "string",
-                                "description": "The exact bash command to execute."
-                            }
-                        },
-                        "required": ["command"]
-                    }
-                },
-                {
-                    "name": "fetch_url",
-                    "description": "Fetch and read the text content of a specific URL (e.g. documentation, web article, GitHub repository, code). ALWAYS call this tool when the user provides a specific web URL or link.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "url": {
-                                "type": "string",
-                                "description": "The full HTTP/HTTPS URL to fetch."
-                            }
-                        },
-                        "required": ["url"]
+
+    // Tool schemas shared across API formats, converted per format below.
+    // switch_to_search_mode is only offered to Gemini since search grounding
+    // is a Gemini-only feature.
+    readonly property var functionDeclarations: [
+        {
+            "name": "switch_to_search_mode",
+            "description": "Switch to Google Search mode to retrieve real-time data, current events, or web information.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        },
+        {
+            "name": "get_shell_config",
+            "description": "Read the desktop shell configuration. Pass 'section' to inspect a specific section (e.g. 'bar', 'appearance', 'ai', 'wallpaper') or omit it to list available top-level sections.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "description": "Specific config section to retrieve (e.g. 'bar', 'appearance', 'ai', 'wallpaper'). Leave empty to get available top-level section keys."
                     }
                 }
-            ]}],
-            "search": [{
-                "google_search": {}
-            }],
-            "none": []
+            }
         },
-        "openai": {
-            "functions": [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "get_shell_config",
-                        "description": "Get the desktop shell config file contents",
-                        "parameters": {}
+        {
+            "name": "set_shell_config",
+            "description": "Set a field in the desktop graphical shell configuration. Must only be used after verifying the key with `get_shell_config`.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "The exact configuration key path to set, e.g. `bar.borderless` or `wallpaper.enableBlur`. MUST NOT BE GUESSED."
                     },
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "set_shell_config",
-                        "description": "Set a field in the desktop graphical shell config file. Must only be used after `get_shell_config`.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "key": {
-                                    "type": "string",
-                                    "description": "The key to set, e.g. `bar.borderless`. MUST NOT BE GUESSED, use `get_shell_config` to see what keys are available before setting.",
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "description": "The value to set, e.g. `true`"
-                                }
-                            },
-                            "required": ["key", "value"]
-                        }
+                    "value": {
+                        "type": "string",
+                        "description": "The value to set formatted as a string/JSON, e.g. 'true', 'false', '12', or '\"blur\"'."
                     }
                 },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "run_shell_command",
-                        "description": "Run a shell command in bash and get its output. Use this only for quick commands that don't require user interaction. For commands that require interaction, ask the user to run manually instead.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "command": {
-                                    "type": "string",
-                                    "description": "The bash command to run",
-                                },
-                            },
-                            "required": ["command"]
-                        }
-                    },
+                "required": ["key", "value"]
+            }
+        },
+        {
+            "name": "run_shell_command",
+            "description": "Run a quick, non-interactive local bash command and get its output. DO NOT use this tool for web searches or for writing comments/thoughts. Only for real local bash commands. sudo is not available through this tool; never propose privileged commands. Requires user confirmation.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "The exact bash command to execute."
+                    }
                 },
-            ],
+                "required": ["command"]
+            }
+        },
+        {
+            "name": "fetch_url",
+            "description": "Fetch and read the text content of a specific URL (e.g. documentation, web article, GitHub repository, code). ALWAYS call this tool when the user provides a specific web URL or link.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "The full HTTP/HTTPS URL to fetch."
+                    }
+                },
+                "required": ["url"]
+            }
+        },
+    ]
+    readonly property var compatFunctionDeclarations: root.functionDeclarations.filter(declaration => declaration.name !== "switch_to_search_mode")
+
+    function toOpenAiTool(declaration): var {
+        return { "type": "function", "function": declaration };
+    }
+
+    property var tools: {
+        "gemini": {
+            "functions": [{ "functionDeclarations": root.functionDeclarations }],
+            "search": [{ "google_search": {} }],
+            "none": [],
+        },
+        "openai": {
+            "functions": root.compatFunctionDeclarations.map(root.toOpenAiTool),
             "search": [],
             "none": [],
         },
         "mistral": {
-            "functions": [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "get_shell_config",
-                        "description": "Get the desktop shell config file contents",
-                        "parameters": {}
-                    },
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "set_shell_config",
-                        "description": "Set a field in the desktop graphical shell config file. Must only be used after `get_shell_config`.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "key": {
-                                    "type": "string",
-                                    "description": "The key to set, e.g. `bar.borderless`. MUST NOT BE GUESSED, use `get_shell_config` to see what keys are available before setting.",
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "description": "The value to set, e.g. `true`"
-                                }
-                            },
-                            "required": ["key", "value"]
-                        }
-                    }
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "run_shell_command",
-                        "description": "Run a shell command in bash and get its output. Use this only for quick commands that don't require user interaction. For commands that require interaction, ask the user to run manually instead.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "command": {
-                                    "type": "string",
-                                    "description": "The bash command to run",
-                                },
-                            },
-                            "required": ["command"]
-                        }
-                    },
-                },
-            ],
+            "functions": root.compatFunctionDeclarations.map(root.toOpenAiTool),
             "search": [],
             "none": [],
-        }
+        },
     }
     property list<var> availableTools: Object.keys(root.tools[models[currentModelId]?.api_format])
     property var toolDescriptions: {
@@ -342,9 +256,9 @@ Singleton {
     property var currentModelId: Persistent.states?.ai?.model || modelList[0]
 
     property var apiStrategies: {
-        "openai": openaiApiStrategy.createObject(this),
         "gemini": geminiApiStrategy.createObject(this),
-        "mistral": mistralApiStrategy.createObject(this),
+        "openai": openaiCompatApiStrategy.createObject(this),
+        "mistral": openaiCompatApiStrategy.createObject(this),
     }
     property ApiStrategy currentApiStrategy: apiStrategies[models[currentModelId]?.api_format || "openai"]
 
@@ -372,7 +286,7 @@ Singleton {
     property var pendingFilePaths: []
 
     Component.onCompleted: {
-        Quickshell.execDetached(["mkdir", "-p", root.requestScriptDir]); // Ensure runtime dir exists
+        Quickshell.execDetached(["mkdir", "-p", "-m", "700", root.requestScriptDir]); // Ensure a private runtime dir exists
         setModel(currentModelId, false, false); // Do necessary setup for model
         root.addUserModels() // Config onReadyChanged above might not fire if config is loaded before this service
     }
@@ -568,7 +482,7 @@ Singleton {
                 }
             }
         } else {
-            if (feedback) root.addMessage(Translation.tr("Invalid model. Supported: \n```\n") + modelList.join("\n```\n```\n"), Ai.interfaceRole) + "\n```"
+            if (feedback) root.addMessage(Translation.tr("Invalid model. Supported:\n```\n%1\n```").arg(modelList.join("\n")), root.interfaceRole);
         }
     }
 
@@ -586,7 +500,7 @@ Singleton {
     }
 
     function setTemperature(value) {
-        if (value == NaN || value < 0 || value > 2) {
+        if (isNaN(value) || value < 0 || value > 2) {
             root.addMessage(Translation.tr("Temperature must be between 0 and 2"), Ai.interfaceRole);
             return;
         }
@@ -640,6 +554,7 @@ Singleton {
     function stopResponse() {
         if (requester.running) {
             requester.stoppedByUser = true;
+            requester.errorRetryCount = 0;
             requester.running = false;
         }
         if (commandExecutionProc.running) {
@@ -654,10 +569,16 @@ Singleton {
 
     Process {
         id: requester
-        property list<string> baseCommand: ["bash"]
         property AiMessageData message
         property ApiStrategy currentStrategy
         property bool stoppedByUser: false
+        property int errorRetryCount: 0
+        readonly property int maxErrorRetries: 2
+
+        function hasRetriableError(): bool {
+            const content = message?.content ?? "";
+            return /\*\*Error 5\d\d\*\*/.test(content) || content.includes("The model output could not be generated");
+        }
 
         function markDone() {
             requester.message.done = true;
@@ -761,7 +682,8 @@ Singleton {
             const shellScriptPath = CF.FileUtils.trimFileProtocol(root.requestScriptFilePath)
             requesterScriptFile.path = Qt.resolvedUrl(shellScriptPath)
             requesterScriptFile.setText(scriptContent)
-            requester.command = baseCommand.concat([shellScriptPath]);
+            // Tighten permissions first: the script embeds the whole conversation
+            requester.command = ["bash", "-c", "umask 077; chmod 600 \"$1\"; exec bash \"$1\"", "bash", shellScriptPath];
             requester.running = true
         }
 
@@ -819,12 +741,25 @@ Singleton {
             // Handle error responses
             if (requester.message.content.includes("API key not valid")) {
                 root.addApiKeyAdvice(models[requester.message.model]);
+                requester.errorRetryCount = 0;
+                return;
             }
 
-            // For Gemma Error 500
-            if (requester.message.content.includes("**Error 500**: Internal error encountered.") || requester.message.content.includes("**Error 503**: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.") || requester.message.content.includes("The model output could not be generated")) {
-                root.regenerate(root.messageIDs.length - 1);
+            // Auto-retry transient server errors, capped to avoid infinite loops
+            if (requester.hasRetriableError()) {
+                if (requester.errorRetryCount < requester.maxErrorRetries) {
+                    requester.errorRetryCount++;
+                    root.regenerate(root.messageIDs.length - 1);
+                } else {
+                    requester.errorRetryCount = 0;
+                    root.addMessage(
+                        Translation.tr("The model kept returning server errors. Gave up after %1 attempts.").arg(requester.maxErrorRetries + 1),
+                        root.interfaceRole
+                    );
+                }
+                return;
             }
+            requester.errorRetryCount = 0;
         }
     }
 
@@ -952,20 +887,7 @@ Singleton {
 
         commandExecutionProc.message = responseMessage;
         commandExecutionProc.baseMessageContent = responseMessage.content;
-        if (message.privileged) {
-            // Force fresh-password mode: `-k` ignores cached credentials so the
-            // user must type their password EVERY time, and `-A` routes that
-            // prompt through the GUI dialog. The password never flows through
-            // the conversation, so it can never reach the API server.
-            const askpassPath = CF.FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/sudo-askpass.sh`);
-            commandExecutionProc.shellCommand =
-                // export is required: an un-exported variable would never reach the sudo process
-                `export SUDO_ASKPASS='${CF.StringUtils.shellSingleQuoteEscape(askpassPath)}'` + "\n"
-                + String(message.functionCall.args.command).replace(/\bsudo\s+(?:(?:-{1,2}S\b|--stdin\b|-A\b|-k\b|-K\b|-n\b)\s+)*/g, "sudo -k -A ");
-            commandExecutionProc.message.functionResponse += Translation.tr("[[ sudo: cached credentials ignored (-k), password prompted every time ]]") + "\n";
-        } else {
-            commandExecutionProc.shellCommand = message.functionCall.args.command;
-        }
+        commandExecutionProc.shellCommand = message.functionCall.args.command;
         commandExecutionProc.running = true; // Start the command execution
     }
 
@@ -976,6 +898,13 @@ Singleton {
         property string baseMessageContent: ""
         property bool stoppedByUser: false
         command: ["bash", "-c", shellCommand]
+
+        function refreshContent() {
+            const updatedContent = baseMessageContent + `\n\n<think>\n<tt>${message.functionResponse}</tt>\n</think>`;
+            message.rawContent = updatedContent;
+            message.content = updatedContent;
+        }
+
         stdout: SplitParser {
             onRead: (output) => {
                 // Truncate output to prevent exceeding 16000 TPM limit on long logs
@@ -985,9 +914,7 @@ Singleton {
                         commandExecutionProc.message.functionResponse += "\n...[Output truncated to conserve tokens]...\n";
                     }
                 }
-                const updatedContent = commandExecutionProc.baseMessageContent + `\n\n<think>\n<tt>${commandExecutionProc.message.functionResponse}</tt>\n</think>`;
-                commandExecutionProc.message.rawContent = updatedContent;
-                commandExecutionProc.message.content = updatedContent;
+                commandExecutionProc.refreshContent();
             }
         }
         onExited: (exitCode, exitStatus) => {
@@ -1020,27 +947,6 @@ Singleton {
             addFunctionOutputMessage("fetch_url", result.length > 0 ? result : Translation.tr("No content returned from URL."));
             requester.makeRequest();
         }
-    }
-
-    /**
-     * Classifies a proposed shell command for safe privileged execution.
-     * Returns { privileged, blockedReason }:
-     * - privileged: uses sudo; approval will require the user's typed password via GUI
-     * - blockedReason: non-null when the command must never be executed as proposed
-     */
-    function classifyShellCommand(command) {
-        const result = { privileged: false, blockedReason: null };
-        if (!/\bsudo\b/.test(command)) return result;
-        result.privileged = true;
-        // The password must come from the user's dialog, never from stdin/files
-        if (/\bsudo\s+(?:-{1,2}S\b|--stdin\b)|\|\s*sudo\b/.test(command)) {
-            result.blockedReason = Translation.tr("Passwords must be typed by you in a secure dialog, not piped into sudo.");
-        }
-        // The sudoers configuration itself is off-limits through the assistant
-        if (/\/etc\/sudoers|\bsudoers\.d\b|\bvisudo\b/.test(command)) {
-            result.blockedReason = result.blockedReason ?? Translation.tr("Modifying the sudoers configuration through the assistant is not allowed.");
-        }
-        return result;
     }
 
     function handleFunctionCall(name, args: var, message: AiMessageData) {
@@ -1106,14 +1012,12 @@ Singleton {
                 requester.makeRequest();
                 return;
             }
-            // Security gate for privileged commands
-            const classification = classifyShellCommand(args.command);
-            if (classification.blockedReason) {
-                addFunctionOutputMessage(name, Translation.tr("Rejected: %1").arg(classification.blockedReason));
+            // Privileged commands are not the assistant's business
+            if (/\bsudo\b/.test(args.command)) {
+                addFunctionOutputMessage(name, Translation.tr("Rejected: sudo is not available through the assistant. Run privileged commands yourself if needed, or guide the user to do it."));
                 requester.makeRequest();
                 return;
             }
-            message.privileged = classification.privileged;
             const contentToAppend = `\n\n**Command execution request**\n\n\`\`\`command\n${args.command}\`\`\``;
             message.rawContent += contentToAppend;
             message.content += contentToAppend;

@@ -22,7 +22,6 @@ QtObject {
     property var functionCall
     property string functionResponse
     property bool functionPending: false
-    property bool privileged: false
     property bool visibleToUser: true
     property bool sensitive: false
 }

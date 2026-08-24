@@ -252,14 +252,6 @@ ColumnLayout {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         spacing: 3
-                        StyledText {
-                            visible: root.messageData?.privileged ?? false
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.colors.colError
-                            text: Translation.tr("Privileged command: your password will be requested")
-                        }
                         RowLayout {
                             Layout.fillWidth: true
                             Item { Layout.fillWidth: true }
