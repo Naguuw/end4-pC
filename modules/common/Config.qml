@@ -186,6 +186,7 @@ Singleton {
                     property int gapsIn: 2
                     property int gapsOut: 5
                     property string layout: "dwindle"
+                    property string specialLayout: "scrolling"
                 }
                 property JsonObject input: JsonObject {
                     property string kbLayout: "us"

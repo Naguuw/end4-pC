@@ -157,6 +157,36 @@ def edit_lua(file_path, set_pairs, reset_keys):
     write_atomic(file_path, "".join(new_lines))
 
 
+def edit_workspace_layout(file_path, workspace, layout):
+    try:
+        with open(file_path) as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        lines = []
+
+    marker = f'workspace = "{workspace}"'
+    new_line = f'hl.workspace_rule({{ workspace = "{workspace}", layout = "{layout}" }})\n'
+
+    new_lines = []
+    replaced = False
+    for line in lines:
+        if "workspace_rule" in line and marker in line:
+            if replaced:
+                print(f"Removed duplicate: {line.strip()}")
+                continue
+            new_lines.append(new_line)
+            replaced = True
+            print(f"Updated: {new_line.strip()}")
+        else:
+            new_lines.append(line)
+
+    if not replaced:
+        new_lines.append(new_line)
+        print(f"Added:   {new_line.strip()}")
+
+    write_atomic(file_path, "".join(new_lines))
+
+
 def save_preset(anim_file, preset_name):
     content = ANIM_PRESETS.get(preset_name)
     if not content:
@@ -171,12 +201,16 @@ if __name__ == "__main__":
     p.add_argument("--file", default="~/.config/hypr/hyprland/shellOverrides/main.lua")
     p.add_argument("--set", nargs=2, action="append", metavar=("KEY", "VALUE"))
     p.add_argument("--reset", action="append", metavar="KEY")
+    p.add_argument("--workspace-layout", nargs=2, metavar=("WORKSPACE", "LAYOUT"))
     p.add_argument("--anim-preset", metavar="PRESET")
     p.add_argument("--anim-file", default="~/.config/hypr/hyprland/shellOverrides/animations.lua")
     args = p.parse_args()
 
     if args.anim_preset:
         save_preset(os.path.expanduser(args.anim_file), args.anim_preset)
+
+    if args.workspace_layout:
+        edit_workspace_layout(os.path.expanduser(args.file), *args.workspace_layout)
 
     raw_sets   = args.set or []
     reset_keys = args.reset or []
@@ -189,5 +223,5 @@ if __name__ == "__main__":
 
     if set_pairs or reset_keys:
         edit_lua(os.path.expanduser(args.file), set_pairs, reset_keys)
-    elif not args.anim_preset:
-        print("Error: specify --set, --reset, or --anim-preset")
+    elif not args.anim_preset and not args.workspace_layout:
+        print("Error: specify --set, --reset, --anim-preset, or --workspace-layout")

@@ -202,10 +202,8 @@ AbstractBackgroundWidget {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.alignment: Qt.AlignVCenter
                         spacing: 2
-
-                        Item { Layout.fillHeight: true }
 
                         StyledText {
                             Layout.fillWidth: true

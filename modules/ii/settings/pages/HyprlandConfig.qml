@@ -198,6 +198,26 @@ ContentPage {
                         { displayName: Translation.tr("Scrolling"), icon: "view_carousel",       value: "scrolling" },
                     ]
                 }
+                ConfigSelectionArray {
+                    text: Translation.tr("Special Layout")
+                    icon: "stack_star"
+                    currentValue: Config.options.hyprland.general.specialLayout
+                    onSelected: newValue => {
+                        Config.options.hyprland.general.specialLayout = newValue
+                        saveSpecialLayoutProc.command = [
+                            "python3",
+                            HyprlandConfig.configuratorScriptPath,
+                            "--file", HyprlandConfig.workspaceOverridesPath,
+                            "--workspace-layout", "special:special", newValue
+                        ]
+                        saveSpecialLayoutProc.running = true
+                    }
+                    options: [
+                        { displayName: Translation.tr("Dwindle"),   icon: "browse",             value: "dwindle"   },
+                        { displayName: Translation.tr("Master"),    icon: "auto_awesome_mosaic", value: "master"    },
+                        { displayName: Translation.tr("Scrolling"), icon: "view_carousel",       value: "scrolling" },
+                    ]
+                }
             }
         }
 
@@ -532,6 +552,9 @@ ContentPage {
             Process {
                 id: saveAnimProc
                 onRunningChanged: if (!running) reloadAnimProc.running = true
+            }
+            Process {
+                id: saveSpecialLayoutProc
             }
             Process {
                 id: reloadAnimProc
