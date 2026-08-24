@@ -21,8 +21,7 @@ Singleton {
     property Component aiMessageComponent: AiMessageData {}
     property Component aiModelComponent: AiModel {}
     property Component geminiApiStrategy: GeminiApiStrategy {}
-    property Component openaiApiStrategy: OpenAiApiStrategy {}
-    property Component mistralApiStrategy: MistralApiStrategy {}
+    property Component openaiCompatApiStrategy: OpenAiCompatApiStrategy {}
     readonly property string interfaceRole: "interface"
     readonly property string apiKeyEnvVarName: "API_KEY"
 
@@ -60,7 +59,7 @@ Singleton {
 
     function idForMessage(message) {
         // Generate a unique ID using timestamp and random value
-        return Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+        return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
     }
 
     function safeModelName(modelName) {
@@ -85,186 +84,101 @@ Singleton {
     // Gemini: https://ai.google.dev/gemini-api/docs/function-calling
     // OpenAI: https://platform.openai.com/docs/guides/function-calling
     property string currentTool: Config?.options.ai.tool ?? "search"
-    property var tools: {
-        "gemini": {
-            "functions": [{"functionDeclarations": [
-                {
-                    "name": "switch_to_search_mode",
-                    "description": "Switch to Google Search mode to retrieve real-time data, current events, or web information.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {}
-                    }
-                },
-                {
-                    "name": "get_shell_config",
-                    "description": "Read the desktop shell configuration. Pass 'section' to inspect a specific section (e.g. 'bar', 'appearance', 'ai', 'wallpaper') or omit it to list available top-level sections.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "section": {
-                                "type": "string",
-                                "description": "Specific config section to retrieve (e.g. 'bar', 'appearance', 'ai', 'wallpaper'). Leave empty to get available top-level section keys."
-                            }
-                        }
-                    }
-                },
-                {
-                    "name": "set_shell_config",
-                    "description": "Set a field in the desktop graphical shell configuration. Must only be used after verifying the key with `get_shell_config`.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "key": {
-                                "type": "string",
-                                "description": "The exact configuration key path to set, e.g. `bar.borderless` or `wallpaper.enableBlur`. MUST NOT BE GUESSED."
-                            },
-                            "value": {
-                                "type": "string",
-                                "description": "The value to set formatted as a string/JSON, e.g. 'true', 'false', '12', or '\"blur\"'."
-                            }
-                        },
-                        "required": ["key", "value"]
-                    }
-                },
-                {
-                    "name": "run_shell_command",
-                    "description": "Run a quick, non-interactive shell command in bash and get its output. Requires user confirmation in UI before executing.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "command": {
-                                "type": "string",
-                                "description": "The bash command to run."
-                            }
-                        },
-                        "required": ["command"]
-                    }
-                },
-                {
-                    "name": "fetch_url",
-                    "description": "Fetch and read the text content of a specific URL (e.g. documentation, web article, GitHub repository, code). ALWAYS call this tool when the user provides a specific web URL or link.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "url": {
-                                "type": "string",
-                                "description": "The full HTTP/HTTPS URL to fetch."
-                            }
-                        },
-                        "required": ["url"]
+
+    // Tool schemas shared across API formats, converted per format below.
+    // switch_to_search_mode is only offered to Gemini since search grounding
+    // is a Gemini-only feature.
+    readonly property var functionDeclarations: [
+        {
+            "name": "switch_to_search_mode",
+            "description": "Switch to Google Search mode to retrieve real-time data, current events, or web information.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        },
+        {
+            "name": "get_shell_config",
+            "description": "Read the desktop shell configuration. Pass 'section' to inspect a specific section (e.g. 'bar', 'appearance', 'ai', 'wallpaper') or omit it to list available top-level sections.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "description": "Specific config section to retrieve (e.g. 'bar', 'appearance', 'ai', 'wallpaper'). Leave empty to get available top-level section keys."
                     }
                 }
-            ]}],
-            "search": [{
-                "google_search": {}
-            }],
-            "none": []
+            }
         },
-        "openai": {
-            "functions": [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "get_shell_config",
-                        "description": "Get the desktop shell config file contents",
-                        "parameters": {}
+        {
+            "name": "set_shell_config",
+            "description": "Set a field in the desktop graphical shell configuration. Must only be used after verifying the key with `get_shell_config`.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "The exact configuration key path to set, e.g. `bar.borderless` or `wallpaper.enableBlur`. MUST NOT BE GUESSED."
                     },
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "set_shell_config",
-                        "description": "Set a field in the desktop graphical shell config file. Must only be used after `get_shell_config`.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "key": {
-                                    "type": "string",
-                                    "description": "The key to set, e.g. `bar.borderless`. MUST NOT BE GUESSED, use `get_shell_config` to see what keys are available before setting.",
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "description": "The value to set, e.g. `true`"
-                                }
-                            },
-                            "required": ["key", "value"]
-                        }
+                    "value": {
+                        "type": "string",
+                        "description": "The value to set formatted as a string/JSON, e.g. 'true', 'false', '12', or '\"blur\"'."
                     }
                 },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "run_shell_command",
-                        "description": "Run a shell command in bash and get its output. Use this only for quick commands that don't require user interaction. For commands that require interaction, ask the user to run manually instead.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "command": {
-                                    "type": "string",
-                                    "description": "The bash command to run",
-                                },
-                            },
-                            "required": ["command"]
-                        }
-                    },
+                "required": ["key", "value"]
+            }
+        },
+        {
+            "name": "run_shell_command",
+            "description": "Run a quick, non-interactive local bash command and get its output. DO NOT use this tool for web searches or for writing comments/thoughts. Only for real local bash commands. sudo is not available through this tool; never propose privileged commands. Requires user confirmation.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "The exact bash command to execute."
+                    }
                 },
-            ],
+                "required": ["command"]
+            }
+        },
+        {
+            "name": "fetch_url",
+            "description": "Fetch and read the text content of a specific URL (e.g. documentation, web article, GitHub repository, code). ALWAYS call this tool when the user provides a specific web URL or link.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "The full HTTP/HTTPS URL to fetch."
+                    }
+                },
+                "required": ["url"]
+            }
+        },
+    ]
+    readonly property var compatFunctionDeclarations: root.functionDeclarations.filter(declaration => declaration.name !== "switch_to_search_mode")
+
+    function toOpenAiTool(declaration): var {
+        return { "type": "function", "function": declaration };
+    }
+
+    property var tools: {
+        "gemini": {
+            "functions": [{ "functionDeclarations": root.functionDeclarations }],
+            "search": [{ "google_search": {} }],
+            "none": [],
+        },
+        "openai": {
+            "functions": root.compatFunctionDeclarations.map(root.toOpenAiTool),
             "search": [],
             "none": [],
         },
         "mistral": {
-            "functions": [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "get_shell_config",
-                        "description": "Get the desktop shell config file contents",
-                        "parameters": {}
-                    },
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "set_shell_config",
-                        "description": "Set a field in the desktop graphical shell config file. Must only be used after `get_shell_config`.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "key": {
-                                    "type": "string",
-                                    "description": "The key to set, e.g. `bar.borderless`. MUST NOT BE GUESSED, use `get_shell_config` to see what keys are available before setting.",
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "description": "The value to set, e.g. `true`"
-                                }
-                            },
-                            "required": ["key", "value"]
-                        }
-                    }
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "run_shell_command",
-                        "description": "Run a shell command in bash and get its output. Use this only for quick commands that don't require user interaction. For commands that require interaction, ask the user to run manually instead.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "command": {
-                                    "type": "string",
-                                    "description": "The bash command to run",
-                                },
-                            },
-                            "required": ["command"]
-                        }
-                    },
-                },
-            ],
+            "functions": root.compatFunctionDeclarations.map(root.toOpenAiTool),
             "search": [],
             "none": [],
-        }
+        },
     }
     property list<var> availableTools: Object.keys(root.tools[models[currentModelId]?.api_format])
     property var toolDescriptions: {
@@ -343,9 +257,9 @@ Singleton {
     property var currentModelId: Persistent.states?.ai?.model || modelList[0]
 
     property var apiStrategies: {
-        "openai": openaiApiStrategy.createObject(this),
         "gemini": geminiApiStrategy.createObject(this),
-        "mistral": mistralApiStrategy.createObject(this),
+        "openai": openaiCompatApiStrategy.createObject(this),
+        "mistral": openaiCompatApiStrategy.createObject(this),
     }
     property ApiStrategy currentApiStrategy: apiStrategies[models[currentModelId]?.api_format || "openai"]
 
@@ -364,11 +278,16 @@ Singleton {
         }
     }
 
-    property string requestScriptFilePath: "/tmp/quickshell/ai/request.sh"
+    readonly property string requestScriptDir: {
+        const runtime = Quickshell.env("XDG_RUNTIME_DIR");
+        return (runtime && runtime.length > 0) ? `${runtime}/quickshell/ai` : "/tmp/quickshell/ai";
+    }
+    property string requestScriptFilePath: `${root.requestScriptDir}/request.sh`
     property string pendingFilePath: pendingFilePaths[0] ?? ""
     property var pendingFilePaths: []
 
     Component.onCompleted: {
+        Quickshell.execDetached(["mkdir", "-p", "-m", "700", root.requestScriptDir]); // Ensure a private runtime dir exists
         setModel(currentModelId, false, false); // Do necessary setup for model
         root.addUserModels() // Config onReadyChanged above might not fire if config is loaded before this service
     }
@@ -511,12 +430,23 @@ Singleton {
         return aiMessage;
     }
 
-    function removeMessage(index) {
-        if (index < 0 || index >= messageIDs.length) return;
-        const id = root.messageIDs[index];
-        root.messageIDs.splice(index, 1);
+    function removeMessage(target) {
+        if (!target && target !== 0) return;
+        let messageId = target;
+        let idx = root.messageIDs.indexOf(messageId);
+        
+        if (idx === -1) {
+            const num = (typeof target === "number") ? target : parseInt(target, 10);
+            if (!isNaN(num) && num >= 0 && num < root.messageIDs.length) {
+                messageId = root.messageIDs[num];
+                idx = num;
+            }
+        }
+        
+        if (idx < 0 || !messageId) return;
+        root.messageIDs.splice(idx, 1);
         root.messageIDs = [...root.messageIDs];
-        delete root.messageByID[id];
+        delete root.messageByID[messageId];
     }
 
     function addApiKeyAdvice(model) {
@@ -553,7 +483,7 @@ Singleton {
                 }
             }
         } else {
-            if (feedback) root.addMessage(Translation.tr("Invalid model. Supported: \n```\n") + modelList.join("\n```\n```\n"), Ai.interfaceRole) + "\n```"
+            if (feedback) root.addMessage(Translation.tr("Invalid model. Supported:\n```\n%1\n```").arg(modelList.join("\n")), root.interfaceRole);
         }
     }
 
@@ -571,7 +501,7 @@ Singleton {
     }
 
     function setTemperature(value) {
-        if (value == NaN || value < 0 || value > 2) {
+        if (isNaN(value) || value < 0 || value > 2) {
             root.addMessage(Translation.tr("Temperature must be between 0 and 2"), Ai.interfaceRole);
             return;
         }
@@ -600,7 +530,8 @@ Singleton {
         if (model.requires_key) {
             const key = root.apiKeys[model.key_id];
             if (key) {
-                root.addMessage(Translation.tr("API key:\n\n```txt\n%1\n```").arg(key), Ai.interfaceRole);
+                const message = root.addMessage(Translation.tr("API key:\n\n```txt\n%1\n```").arg(key), Ai.interfaceRole);
+                if (message) message.sensitive = true; // Never persist to chat logs
             } else {
                 root.addMessage(Translation.tr("No API key set for %1").arg(model.name), Ai.interfaceRole);
             }
@@ -623,9 +554,12 @@ Singleton {
 
     function stopResponse() {
         if (requester.running) {
+            requester.stoppedByUser = true;
+            requester.errorRetryCount = 0;
             requester.running = false;
         }
         if (commandExecutionProc.running) {
+            commandExecutionProc.stoppedByUser = true;
             commandExecutionProc.running = false;
         }
     }
@@ -636,9 +570,16 @@ Singleton {
 
     Process {
         id: requester
-        property list<string> baseCommand: ["bash"]
         property AiMessageData message
         property ApiStrategy currentStrategy
+        property bool stoppedByUser: false
+        property int errorRetryCount: 0
+        readonly property int maxErrorRetries: 2
+
+        function hasRetriableError(): bool {
+            const content = message?.content ?? "";
+            return /\*\*Error 5\d\d\*\*/.test(content) || content.includes("The model output could not be generated");
+        }
 
         function markDone() {
             requester.message.done = true;
@@ -652,6 +593,7 @@ Singleton {
 
         function makeRequest() {
             const model = models[currentModelId];
+            requester.stoppedByUser = false;
 
             // Fetch API keys if needed
             if (model?.requires_key && !KeyringStorage.loaded) KeyringStorage.fetchKeyringData();
@@ -702,9 +644,23 @@ Singleton {
             // console.log("Request headers: ", JSON.stringify(requestHeaders));
             // console.log("Header string: ", headerString);
 
-            /* Get authorization header from strategy */
-            const authHeader = requester.currentStrategy.buildAuthorizationHeader(root.apiKeyEnvVarName);
-            
+            /* Get authorization header line from strategy */
+            let scriptAuthSetup = "";
+            let authCurlArgs = "";
+            if (model.requires_key) {
+                const authHeaderLine = requester.currentStrategy.buildAuthorizationHeader(root.apiKeyEnvVarName);
+                if (authHeaderLine && authHeaderLine.length > 0) {
+                    // Pass the key via an ephemeral 0600 header file instead of argv,
+                    // so it never shows up in process listings (/proc/*/cmdline)
+                    scriptAuthSetup += "# Auth header via ephemeral file to keep the key out of argv\n";
+                    scriptAuthSetup += `ai_auth_header_file=$(mktemp)\n`;
+                    scriptAuthSetup += `if [[ -z "$ai_auth_header_file" ]]; then exit 1; fi\n`;
+                    scriptAuthSetup += `trap 'rm -f "\${ai_gs_auth_file:-}" "$ai_auth_header_file"' EXIT\n`;
+                    scriptAuthSetup += `printf '%s\\n' "` + authHeaderLine + `" > "$ai_auth_header_file"\n`;
+                    authCurlArgs = ` -H "@$ai_auth_header_file"`;
+                }
+            }
+
             /* Script shebang */
             const scriptShebang = "#!/usr/bin/env bash\n";
 
@@ -718,16 +674,17 @@ Singleton {
             let scriptRequestContent = ""
             scriptRequestContent += `curl --no-buffer "${endpoint}"`
                 + ` ${headerString}`
-                + (authHeader ? ` ${authHeader}` : "")
+                + authCurlArgs
                 + ` --data '${CF.StringUtils.shellSingleQuoteEscape(JSON.stringify(data))}'`
                 + "\n"
-            
+
             /* Send the request */
-            const scriptContent = requester.currentStrategy.finalizeScriptContent(scriptShebang + scriptFileSetupContent + scriptRequestContent, activeFilePaths)
+            const scriptContent = requester.currentStrategy.finalizeScriptContent(scriptShebang + scriptAuthSetup + scriptFileSetupContent + scriptRequestContent, activeFilePaths)
             const shellScriptPath = CF.FileUtils.trimFileProtocol(root.requestScriptFilePath)
             requesterScriptFile.path = Qt.resolvedUrl(shellScriptPath)
             requesterScriptFile.setText(scriptContent)
-            requester.command = baseCommand.concat([shellScriptPath]);
+            // Tighten permissions first: the script embeds the whole conversation
+            requester.command = ["bash", "-c", "umask 077; chmod 600 \"$1\"; exec bash \"$1\"", "bash", shellScriptPath];
             requester.running = true
         }
 
@@ -764,23 +721,46 @@ Singleton {
         }
 
         onExited: (exitCode, exitStatus) => {
+            const wasStopped = requester.stoppedByUser;
+            requester.stoppedByUser = false;
             const result = requester.currentStrategy.onRequestFinished(requester.message);
-            
+
+            // A function call in the final buffered chunk must not be dropped
+            if (result.functionCall) {
+                requester.message.functionCall = result.functionCall;
+                root.handleFunctionCall(result.functionCall.name, result.functionCall.args, requester.message);
+            }
+
             if (result.finished) {
                 requester.markDone();
             } else if (!requester.message.done) {
                 requester.markDone();
             }
 
+            if (wasStopped) return; // User pressed stop: never continue automatically
+
             // Handle error responses
             if (requester.message.content.includes("API key not valid")) {
                 root.addApiKeyAdvice(models[requester.message.model]);
+                requester.errorRetryCount = 0;
+                return;
             }
 
-            // For Gemma Error 500
-            if (requester.message.content.includes("**Error 500**: Internal error encountered.") || requester.message.content.includes("**Error 503**: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.") || requester.message.content.includes("The model output could not be generated")) {
-                root.regenerate(root.messageIDs.length - 1);
+            // Auto-retry transient server errors, capped to avoid infinite loops
+            if (requester.hasRetriableError()) {
+                if (requester.errorRetryCount < requester.maxErrorRetries) {
+                    requester.errorRetryCount++;
+                    root.regenerate(root.messageIDs.length - 1);
+                } else {
+                    requester.errorRetryCount = 0;
+                    root.addMessage(
+                        Translation.tr("The model kept returning server errors. Gave up after %1 attempts.").arg(requester.maxErrorRetries + 1),
+                        root.interfaceRole
+                    );
+                }
+                return;
             }
+            requester.errorRetryCount = 0;
         }
     }
 
@@ -822,21 +802,34 @@ Singleton {
         root.pendingFilePaths = [];
     }
 
-    function regenerate(messageIndex) {
-        if (messageIndex < 0 || messageIndex >= messageIDs.length) return;
-        const id = root.messageIDs[messageIndex];
-        const message = root.messageByID[id];
+    function regenerate(target) {
+        if (!target && target !== 0) return;
+        let messageId = target;
+        let idx = root.messageIDs.indexOf(messageId);
+        
+        if (idx === -1) {
+            const num = (typeof target === "number") ? target : parseInt(target, 10);
+            if (!isNaN(num) && num >= 0 && num < root.messageIDs.length) {
+                messageId = root.messageIDs[num];
+                idx = num;
+            }
+        }
+        
+        if (idx < 0 || !messageId) return;
+        const message = root.messageByID[messageId];
         if (!message) return;
         if (message.role === "assistant") {
-            // Remove all messages starting from this assistant message onwards
-            for (let i = root.messageIDs.length - 1; i >= messageIndex; i--) {
-                root.removeMessage(i);
+            // Remove this assistant message and all messages after it
+            const idsToRemove = root.messageIDs.slice(idx);
+            for (let i = idsToRemove.length - 1; i >= 0; i--) {
+                root.removeMessage(idsToRemove[i]);
             }
             requester.makeRequest();
         } else if (message.role === "user") {
             // Remove all messages after this user message
-            for (let i = root.messageIDs.length - 1; i > messageIndex; i--) {
-                root.removeMessage(i);
+            const idsToRemove = root.messageIDs.slice(idx + 1);
+            for (let i = idsToRemove.length - 1; i >= 0; i--) {
+                root.removeMessage(idsToRemove[i]);
             }
             requester.makeRequest();
         }
@@ -866,11 +859,27 @@ Singleton {
         if (!message.functionPending) return;
         message.functionPending = false; // User decided, no more "thinking"
         addFunctionOutputMessage(message.functionName, Translation.tr("Command rejected by user"))
+        requester.makeRequest(); // Let the model know it was rejected
     }
 
     function approveCommand(message: AiMessageData) {
         if (!message.functionPending) return;
         message.functionPending = false; // User decided, no more "thinking"
+
+        const args = message.functionCall?.args ?? {};
+
+        if (message.functionName === "set_shell_config") {
+            let value = args.value;
+            try {
+                value = JSON.parse(args.value);
+            } catch (e) {
+                // Keep as raw string if not JSON
+            }
+            Config.setNestedValue(String(args.key), value);
+            addFunctionOutputMessage(message.functionName, `Config '${args.key}' successfully set to ${JSON.stringify(value)}.`);
+            requester.makeRequest();
+            return;
+        }
 
         const responseMessage = createFunctionOutputMessage(message.functionName, "", false);
         const id = idForMessage(responseMessage);
@@ -888,7 +897,15 @@ Singleton {
         property string shellCommand: ""
         property AiMessageData message
         property string baseMessageContent: ""
+        property bool stoppedByUser: false
         command: ["bash", "-c", shellCommand]
+
+        function refreshContent() {
+            const updatedContent = baseMessageContent + `\n\n<think>\n<tt>${message.functionResponse}</tt>\n</think>`;
+            message.rawContent = updatedContent;
+            message.content = updatedContent;
+        }
+
         stdout: SplitParser {
             onRead: (output) => {
                 // Truncate output to prevent exceeding 16000 TPM limit on long logs
@@ -898,12 +915,17 @@ Singleton {
                         commandExecutionProc.message.functionResponse += "\n...[Output truncated to conserve tokens]...\n";
                     }
                 }
-                const updatedContent = commandExecutionProc.baseMessageContent + `\n\n<think>\n<tt>${commandExecutionProc.message.functionResponse}</tt>\n</think>`;
-                commandExecutionProc.message.rawContent = updatedContent;
-                commandExecutionProc.message.content = updatedContent;
+                commandExecutionProc.refreshContent();
             }
         }
         onExited: (exitCode, exitStatus) => {
+            if (commandExecutionProc.stoppedByUser) {
+                // User aborted: inform the model and stop, do not continue the conversation
+                commandExecutionProc.stoppedByUser = false;
+                commandExecutionProc.message.functionResponse += Translation.tr("[Command execution stopped by user]") + "\n";
+                root.saveChat("lastSession");
+                return;
+            }
             commandExecutionProc.message.functionResponse += `[[ Command exited with code ${exitCode} (${exitStatus}) ]]\n`;
             requester.makeRequest(); // Continue
         }
@@ -930,7 +952,6 @@ Singleton {
 
     function handleFunctionCall(name, args: var, message: AiMessageData) {
         if (name === "switch_to_search_mode") {
-            const modelId = root.currentModelId;
             root.currentTool = "search"
             root.postResponseHook = () => { root.currentTool = "functions" }
             addFunctionOutputMessage(name, Translation.tr("Switched to search mode. Now searching the web."))
@@ -967,23 +988,38 @@ Singleton {
                 addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `key` and `value`."));
                 return;
             }
-            const key = args.key;
-            let value = args.value;
+            let parsedValue = args.value;
             // Parse JSON values (booleans, numbers, arrays, objects) if provided as string
             try {
-                value = JSON.parse(args.value);
+                parsedValue = JSON.parse(args.value);
             } catch (e) {
                 // Keep as raw string if not JSON
             }
-            Config.setNestedValue(key, value);
-            addFunctionOutputMessage(name, `Config '${key}' successfully set to ${JSON.stringify(value)}.`);
-            requester.makeRequest();
+            // Require explicit user approval before applying anything,
+            // otherwise injected web/chat content could silently alter config
+            const contentToAppend = `\n\n**Config change request**\n\n\`\`\`command\nset_shell_config\n${args.key} = ${JSON.stringify(parsedValue)}\`\`\``;
+            message.rawContent += contentToAppend;
+            message.content += contentToAppend;
+            message.functionPending = true; // Wait for user approval
         } else if (name === "run_shell_command") {
             if (!args.command || args.command.length === 0) {
                 addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `command`."));
                 return;
             }
-            const contentToAppend = `\n\n**Command execution request**\n\n\`\`\`command\n${args.command}\n\`\`\``;
+            const lines = args.command.trim().split("\n").map(l => l.trim()).filter(l => l.length > 0);
+            const isOnlyComments = lines.length > 0 && lines.every(l => l.startsWith("#"));
+            if (isOnlyComments) {
+                addFunctionOutputMessage(name, Translation.tr("Error: The command contains only comments or thoughts. DO NOT use run_shell_command for thinking or searching. If you need web information, call 'switch_to_search_mode'. If answering directly, respond in text."));
+                requester.makeRequest();
+                return;
+            }
+            // Privileged commands are not the assistant's business
+            if (/\bsudo\b/.test(args.command)) {
+                addFunctionOutputMessage(name, Translation.tr("Rejected: sudo is not available through the assistant. Run privileged commands yourself if needed, or guide the user to do it."));
+                requester.makeRequest();
+                return;
+            }
+            const contentToAppend = `\n\n**Command execution request**\n\n\`\`\`command\n${args.command}\`\`\``;
             message.rawContent += contentToAppend;
             message.content += contentToAppend;
             message.functionPending = true; // Use thinking to indicate the command is waiting for approval
@@ -994,9 +1030,11 @@ Singleton {
     function chatToJson() {
         return root.messageIDs.map(id => {
             const message = root.messageByID[id]
+            // Redact sensitive content (e.g. printed API keys) before persisting
+            const persistedContent = message.sensitive ? Translation.tr("[redacted for your safety]") : message.rawContent
             return ({
                 "role": message.role,
-                "rawContent": message.rawContent,
+                "rawContent": persistedContent,
                 "fileMimeType": message.fileMimeType,
                 "fileUri": message.fileUri,
                 "localFilePath": message.localFilePath,
@@ -1042,16 +1080,12 @@ Singleton {
             chatSaveFile.chatName = chatName.trim()
             chatSaveFile.reload()
             const saveContent = chatSaveFile.text()
-            // console.log(saveContent)
             const saveData = JSON.parse(saveContent)
             root.clearMessages()
-            root.messageIDs = saveData.map((_, i) => {
-                return i
-            })
-            // console.log(JSON.stringify(messageIDs))
+            let loadedIDs = []
             for (let i = 0; i < saveData.length; i++) {
                 const message = saveData[i];
-                root.messageByID[i] = root.aiMessageComponent.createObject(root, {
+                const aiMessage = root.aiMessageComponent.createObject(root, {
                     "role": message.role,
                     "rawContent": message.rawContent,
                     "content": message.rawContent,
@@ -1070,7 +1104,11 @@ Singleton {
                     "functionResponse": message.functionResponse,
                     "visibleToUser": message.visibleToUser,
                 });
+                const id = root.idForMessage(aiMessage);
+                loadedIDs.push(id);
+                root.messageByID[id] = aiMessage;
             }
+            root.messageIDs = loadedIDs;
         } catch (e) {
             console.log("[AI] Could not load chat: ", e);
         } finally {

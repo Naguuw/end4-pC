@@ -3,6 +3,7 @@ import qs.modules.common.functions as CF
 
 ApiStrategy {
     readonly property string apiKeyEnvVarName: "API_KEY"
+    readonly property string fileUploadAuthHeader: `x-goog-api-key: \${${apiKeyEnvVarName}}`
     readonly property string fileUriVarName: "file_uri"
     readonly property string fileMimeTypeVarName: "MIME_TYPE"
     readonly property string fileUriSubstitutionString: "{{ " + fileUriVarName + " }}"
@@ -10,9 +11,7 @@ ApiStrategy {
     property string buffer: ""
     
     function buildEndpoint(model: AiModel): string {
-        const result = model.endpoint + `?key=\$\{${root.apiKeyEnvVarName}\}`
-        // console.log("[AI] Endpoint: " + result);
-        return result;
+        return model.endpoint;
     }
 
     function isGemmaModel(model: AiModel): bool {
@@ -115,7 +114,7 @@ ApiStrategy {
     }
 
     function buildAuthorizationHeader(apiKeyEnvVarName: string): string {
-        return "";
+        return `x-goog-api-key: \${${apiKeyEnvVarName}}`;
     }
 
     function parseResponseLine(line, message) {
@@ -135,9 +134,11 @@ ApiStrategy {
     function parseBuffer(message) {
         // console.log("[Ai] Gemini buffer: ", buffer);
         let finished = false;
+        let parsed = false;
         try {
             if (buffer.length === 0) return {};
             const dataJson = JSON.parse(buffer);
+            parsed = true;
 
             // Uploaded file
             if (dataJson.uploadedFile) {
@@ -239,8 +240,9 @@ ApiStrategy {
             
         } catch (e) {
             console.log("[AI] Gemini: Could not parse buffer: ", e);
+            if (buffer.length > 1000000) parsed = true;
         } finally {
-            buffer = "";
+            if (parsed) buffer = "";
         }
         return { finished: finished };
     }
@@ -257,6 +259,11 @@ ApiStrategy {
         const paths = (typeof filePaths === "string") ? (filePaths.length > 0 ? [filePaths] : []) : (Array.isArray(filePaths) ? filePaths : []);
         let content = ""
 
+        content += `ai_gs_auth_file=$(mktemp)\n`;
+        content += `if [[ -z "$ai_gs_auth_file" ]]; then exit 1; fi\n`;
+        content += `trap 'rm -f "\${ai_auth_header_file:-}" "$ai_gs_auth_file"' EXIT\n`;
+        content += `printf '%s\\n' "${fileUploadAuthHeader}" > "$ai_gs_auth_file"\n`;
+
         for (let i = 0; i < paths.length; i++) {
             const trimmedFilePath = CF.FileUtils.trimFileProtocol(paths[i]);
             const mimeVar = `${fileMimeTypeVarName}${i}`;
@@ -268,11 +275,11 @@ ApiStrategy {
             content += `    ${mimeVar}="text/plain"\n`;
             content += `fi\n`;
             content += `NUM_BYTES_${i}=$(wc -c < "$IMAGE_PATH_${i}")\n`;
-            content += `tmp_header_file_${i}="/tmp/quickshell/ai/upload-header-${i}.tmp"\n`;
-            content += `tmp_file_info_file_${i}="/tmp/quickshell/ai/file-info-${i}.json.tmp"\n`;
+            content += `tmp_header_file_${i}=$(mktemp)\n`;
+            content += `tmp_file_info_file_${i}=$(mktemp)\n`;
 
             content += 'curl "https://generativelanguage.googleapis.com/upload/v1beta/files"'
-                + ` -H "x-goog-api-key: \$${apiKeyEnvVarName}"`
+                + ` -H "@$ai_gs_auth_file"`
                 + ` -D $tmp_header_file_${i}`
                 + ' -H "X-Goog-Upload-Protocol: resumable"'
                 + ' -H "X-Goog-Upload-Command: start"'
@@ -283,16 +290,17 @@ ApiStrategy {
                 + '\n';
 
             content += `upload_url_${i}=$(grep -i "x-goog-upload-url: " "\${tmp_header_file_${i}}" | cut -d" " -f2 | tr -d "\r")\n`;
-            content += `rm "\${tmp_header_file_${i}}"\n`;
+            content += `rm -f "\${tmp_header_file_${i}}"\n`;
 
             content += `curl "\${upload_url_${i}}"`
-                + ` -H "x-goog-api-key: \$${apiKeyEnvVarName}"`
+                + ` -H "@$ai_gs_auth_file"`
                 + ` -H "Content-Length: \${NUM_BYTES_${i}}"`
                 + ' -H "X-Goog-Upload-Offset: 0"'
                 + ' -H "X-Goog-Upload-Command: upload, finalize"'
                 + ` --data-binary "@$IMAGE_PATH_${i}" 2> /dev/null > "\${tmp_file_info_file_${i}}"\n`;
 
             content += `${uriVar}=$(jq -r ".file.uri" "$tmp_file_info_file_${i}")\n`
+            content += `rm -f "\${tmp_file_info_file_${i}}"\n`;
             content += `printf "{\\"uploadedFile\\": {\\"uri\\": \\"$${uriVar}\\", \\"mimeType\\": \\"$${mimeVar}\\", \\"localPath\\": \\"$IMAGE_PATH_${i}\\", \\"index\\": ${i}}}\\n,\\n"\n`
         }
 

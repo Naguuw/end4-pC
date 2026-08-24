@@ -297,75 +297,130 @@ Singleton {
     }
 
     /**
-     * Replaces common inline LaTeX symbols and arrows with their Unicode equivalents.
+     * Replaces common LaTeX symbols, commands, and math notation with clean Unicode equivalents.
+     * Inline code spans are protected from any transformation.
      * @param { string } text
      * @returns { string }
      */
     function replaceCommonLatexSymbols(text) {
         if (!text) return "";
-        const map = {
-            "\\rightarrow": "→",
-            "\\to": "→",
-            "\\leftarrow": "←",
-            "\\gets": "←",
-            "\\Rightarrow": "⇒",
-            "\\Leftarrow": "⇐",
-            "\\leftrightarrow": "↔",
-            "\\Leftrightarrow": "⇔",
-            "\\mapsto": "↦",
-            "\\uparrow": "↑",
-            "\\downarrow": "↓",
-            "\\le": "≤",
-            "\\leq": "≤",
-            "\\ge": "≥",
-            "\\geq": "≥",
-            "\\neq": "≠",
-            "\\ne": "≠",
-            "\\approx": "≈",
-            "\\times": "×",
-            "\\div": "÷",
-            "\\pm": "±",
-            "\\mp": "∓",
-            "\\cdot": "·",
-            "\\cdots": "…",
-            "\\ldots": "…",
-            "\\dots": "…",
-            "\\infty": "∞",
-            "\\in": "∈",
-            "\\notin": "∉",
-            "\\subset": "⊂",
-            "\\subseteq": "⊆",
-            "\\cup": "∪",
-            "\\cap": "∩",
-            "\\forall": "∀",
-            "\\exists": "∃",
-            "\\therefore": "∴",
-            "\\because": "∵",
-            "\\equiv": "≡",
-            "\\alpha": "α",
-            "\\beta": "β",
-            "\\gamma": "γ",
-            "\\delta": "δ",
-            "\\epsilon": "ε",
-            "\\theta": "θ",
-            "\\lambda": "λ",
-            "\\mu": "μ",
-            "\\pi": "π",
-            "\\sigma": "σ",
-            "\\tau": "τ",
-            "\\phi": "φ",
-            "\\omega": "ω",
-            "\\Delta": "Δ",
-            "\\Omega": "Ω"
-        };
         let res = text;
-        for (let cmd in map) {
-            const sym = map[cmd];
-            const escapedCmd = "\\" + cmd;
-            const dollarRegex = new RegExp("\\$\\s*" + escapedCmd + "\\s*\\$", "g");
-            const parenRegex = new RegExp("\\\\\\(\\s*" + escapedCmd + "\\s*\\\\\\)", "g");
-            res = res.replace(dollarRegex, sym).replace(parenRegex, sym);
+
+        // 0. Protect inline code spans (`...`) from all transformations below
+        const stash = [];
+        const stashIt = (s) => { stash.push(s); return `\u0000${stash.length - 1}\u0000`; };
+        res = res.replace(/`[^`\n]*`/g, stashIt);
+
+        // 1. Clean up stray markdown latex image links if any
+        res = res.replace(/!\[latex\]\([^)]+\)/g, "");
+
+        // 2. Unpack text wrappers: \text{...}, \mathrm{...}, \mathbf{...}, \mathit{...}
+        res = res.replace(/\\(?:text|mathrm|mathbf|mathit|textrm|textbf|textit)\{([^}]*)\}/g, "$1");
+
+        // 3. Fractions: \frac{a}{b} -> (a / b) or a/b
+        res = res.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1 / $2)");
+
+        // 4. Square roots: \sqrt{x} -> √(x)
+        res = res.replace(/\\sqrt\{([^}]+)\}/g, "√($1)");
+
+        // 5. LaTeX spaces
+        res = res.replace(/\\(?:quad|qquad|;|,|:| )/g, " ");
+
+        // 6. Map of common LaTeX symbol commands
+        const symbolMap = {
+            "\\rightarrow": "→", "\\to": "→",
+            "\\leftarrow": "←", "\\gets": "←",
+            "\\Rightarrow": "⇒", "\\Leftarrow": "⇐",
+            "\\leftrightarrow": "↔", "\\Leftrightarrow": "⇔",
+            "\\mapsto": "↦", "\\uparrow": "↑", "\\downarrow": "↓",
+            "\\le": "≤", "\\leq": "≤",
+            "\\ge": "≥", "\\geq": "≥",
+            "\\neq": "≠", "\\ne": "≠",
+            "\\approx": "≈", "\\sim": "~",
+            "\\times": "×", "\\div": "÷",
+            "\\pm": "±", "\\mp": "∓",
+            "\\cdot": "·", "\\cdots": "…", "\\ldots": "…", "\\dots": "…",
+            "\\infty": "∞",
+            "\\in": "∈", "\\notin": "∉",
+            "\\subset": "⊂", "\\subseteq": "⊆",
+            "\\cup": "∪", "\\cap": "∩",
+            "\\forall": "∀", "\\exists": "∃",
+            "\\therefore": "∴", "\\because": "∵",
+            "\\equiv": "≡",
+            "\\alpha": "α", "\\beta": "β", "\\gamma": "γ", "\\delta": "δ",
+            "\\epsilon": "ε", "\\zeta": "ζ", "\\eta": "η", "\\theta": "θ",
+            "\\iota": "ι", "\\kappa": "κ", "\\lambda": "λ", "\\mu": "μ",
+            "\\nu": "ν", "\\xi": "ξ", "\\pi": "π", "\\rho": "ρ",
+            "\\sigma": "σ", "\\tau": "τ", "\\upsilon": "υ", "\\phi": "φ",
+            "\\chi": "χ", "\\psi": "ψ", "\\omega": "ω",
+            "\\Gamma": "Γ", "\\Delta": "Δ", "\\Theta": "Θ", "\\Lambda": "Λ",
+            "\\Xi": "Ξ", "\\Pi": "Π", "\\Sigma": "Σ", "\\Phi": "Φ",
+            "\\Psi": "Ψ", "\\Omega": "Ω",
+            "\\degree": "°", "\\circ": "°"
+        };
+
+        for (let cmd in symbolMap) {
+            const sym = symbolMap[cmd];
+            // Match \cmd with word boundary/non-alpha follow up
+            const regex = new RegExp(cmd.replace("\\", "\\\\") + "(?![a-zA-Z])", "g");
+            res = res.replace(regex, sym);
         }
+
+        // 7. Common superscripts and subscripts
+        const supMap = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ", "x": "ˣ" };
+        const subMap = { "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "-": "₋", "=": "₌", "(": "₍", ")": "₎", "a": "ₐ", "e": "ₑ", "i": "ᵢ", "j": "ⱼ", "n": "ₙ", "x": "ₓ" };
+
+        res = res.replace(/\^\{([0-9+\-nix=()]+)\}/g, (_, p) => p.split("").map(c => supMap[c] ?? c).join(""));
+        res = res.replace(/\^([0-9nix])/g, (_, c) => supMap[c] ?? `^${c}`);
+        res = res.replace(/_\{([0-9+\-aeijnx=()]+)\}/g, (_, p) => p.split("").map(c => subMap[c] ?? c).join(""));
+        res = res.replace(/_([0-9aeijnx])/g, (_, c) => subMap[c] ?? `_${c}`);
+
+        // 8. Strip display and inline math delimiters: $$, \[, \], \(, \)
+        res = res.replace(/\$\$([\s\S]*?)\$\$/g, "$1");
+        res = res.replace(/\\\[([\s\S]*?)\\\]/g, "$1");
+        res = res.replace(/\\\(([\s\S]*?)\\\)/g, "$1");
+
+        // 9. Strip paired $ delimiters ONLY around clearly-LaTeX content.
+        // Keeps env vars ($PATH), shell snippets and prices ($0.10) intact.
+        res = res.replace(/(^|[^$\d])\$([^$\n]+?)\$(?=[^$\d]|$)/g, (match, prefix, inner) => {
+            // Keep prices like $5 or $0.10 (optionally with %)
+            if (/^\d+(\.\d+)?%?$/.test(inner.trim())) {
+                return match;
+            }
+            // Only strip when the content actually looks like math/LaTeX
+            if (!/(\\[a-zA-Z]+|\^|_|\{|\})/.test(inner)) {
+                return match;
+            }
+            return prefix + inner;
+        });
+
+        // 10. Restore protected inline code spans
+        for (let i = 0; i < stash.length; i++) {
+            res = res.split(`\u0000${i}\u0000`).join(stash[i]);
+        }
+
+        return res;
+    }
+
+    /**
+     * Applies replaceCommonLatexSymbols only OUTSIDE of math regions
+     * ($...$, $$...$$, \(...\), \[...\]) so their content stays verbatim
+     * and can later be replaced with images rendered by LatexRenderer.
+     * @param { string } text
+     * @returns { string }
+     */
+    function replaceNonMathLatexSymbols(text) {
+        if (!text) return "";
+        const mathRegex = /\$\$[\s\S]*?\$\$|\$[^$\n]+?\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g;
+        let res = "";
+        let last = 0;
+        let match;
+        while ((match = mathRegex.exec(text)) !== null) {
+            res += replaceCommonLatexSymbols(text.slice(last, match.index));
+            res += match[0];
+            last = match.index + match[0].length;
+        }
+        res += replaceCommonLatexSymbols(text.slice(last));
         return res;
     }
 }

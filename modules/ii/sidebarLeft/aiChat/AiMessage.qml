@@ -9,6 +9,7 @@ import Quickshell
 
 Rectangle {
     id: root
+    property string messageId: ""
     property int messageIndex
     property var messageData
     property var messageInputField
@@ -49,7 +50,7 @@ Rectangle {
         root.messageData.content = newContent;
         root.messageData.rawContent = newContent;
         if (resend) {
-            Ai.regenerate(root.messageIndex);
+            Ai.regenerate(root.messageId);
         }
     }
 
@@ -170,7 +171,7 @@ Rectangle {
                         visible: !root.editing && messageData?.role === 'assistant'
 
                         onClicked: {
-                            Ai.regenerate(root.messageIndex)
+                            Ai.regenerate(root.messageId)
                         }
                         
                         StyledToolTip {
@@ -237,7 +238,7 @@ Rectangle {
                         visible: !root.editing
                         buttonIcon: "close"
                         onClicked: {
-                            Ai.removeMessage(root.messageIndex)
+                            Ai.removeMessage(root.messageId)
                         }
                         StyledToolTip {
                             text: Translation.tr("Delete")

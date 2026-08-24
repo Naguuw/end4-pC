@@ -385,10 +385,9 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 delegate: AiMessage {
                     required property var modelData
                     required property int index
+                    messageId: String(modelData)
                     messageIndex: index
-                    messageData: {
-                        Ai.messageByID[modelData];
-                    }
+                    messageData: Ai.messageByID[modelData]
                     messageInputField: root.inputField
                 }
             }

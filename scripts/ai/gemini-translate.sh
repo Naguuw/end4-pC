@@ -48,12 +48,22 @@ payload=$(jq -n \
 # Get API key
 API_KEY=$(secret-tool lookup 'application' 'illogical-impulse' | jq -r '.apiKeys.gemini')
 
+# Pass the API key via an ephemeral 0600 file instead of argv,
+# so it never shows up in process listings (/proc/*/cmdline)
+auth_file=$(mktemp)
+if [[ -z "$auth_file" ]]; then
+    notify-send "Translation failed" "Could not create temporary auth file" -a "$NOTIFICATION_APP_NAME"
+    exit 1
+fi
+trap 'rm -f "$auth_file"' EXIT
+printf '%s\n' "x-goog-api-key: ${API_KEY}" > "$auth_file"
+
 # Notify start
 notify-send "Translation started" "Will take 2 minutes, and you'll be notified when it's done, so feel free to do something else in the meantime." -a "$NOTIFICATION_APP_NAME"
 
 # Make the request
 response=$(curl "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent" \
--H "x-goog-api-key: $API_KEY" \
+-H "@$auth_file" \
 -H 'Content-Type: application/json' \
 -X POST \
 -d "$payload" 2> /dev/null)

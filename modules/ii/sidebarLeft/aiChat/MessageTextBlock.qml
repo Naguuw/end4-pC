@@ -72,7 +72,7 @@ ColumnLayout {
     }
 
     onSegmentContentChanged: {
-        renderedSegmentContent = StringUtils.replaceCommonLatexSymbols(segmentContent);
+        renderedSegmentContent = StringUtils.replaceNonMathLatexSymbols(segmentContent);
         if (segmentContent) {
             root.renderLatex();
         }
