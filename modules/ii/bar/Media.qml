@@ -237,10 +237,7 @@ Item {
                             sourceSize.width: avatarRect.width * 2
                             sourceSize.height: avatarRect.height * 2
                             fillMode: Image.PreserveAspectCrop
-                            onStatusChanged: {
-                                if (status === Image.Error)
-                                    visible = false
-                            }
+                            visible: status !== Image.Error
                         }
 
                         MaterialSymbol {

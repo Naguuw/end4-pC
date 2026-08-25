@@ -222,9 +222,7 @@ Item {
                                                 radius: avatarRect.radius
                                             }
                                         }
-                                        onStatusChanged: {
-                                            if (status === Image.Error) visible = false
-                                        }
+                                        visible: status !== Image.Error
                                     }
 
                                     MaterialSymbol {

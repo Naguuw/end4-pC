@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import qs
+import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -17,9 +18,10 @@ Rectangle {
     property var onRemove: () => {}
     property var onRename: (newName) => {}
     property bool isEditing: false
+    property bool removeArmed: false
 
     function startEditing() {
-        editInput.text = root.title
+        editInput.text = root.description.length > 0 ? `${root.title}, ${root.description}` : root.title
         root.isEditing = true
         Qt.callLater(() => {
             editInput.forceActiveFocus()
@@ -29,7 +31,8 @@ Rectangle {
 
     function confirmEdit() {
         const trimmed = editInput.text.trim()
-        if (trimmed.length > 0 && trimmed !== root.title) {
+        const nameChanged = trimmed.split(",")[0].trim() !== root.title
+        if (trimmed.length > 0 && (nameChanged || trimmed.indexOf(",") !== -1)) {
             root.onRename(trimmed)
         }
         root.isEditing = false
@@ -37,6 +40,12 @@ Rectangle {
 
     function cancelEdit() {
         root.isEditing = false
+    }
+
+    Timer {
+        id: removeDisarmTimer
+        interval: 3000
+        onTriggered: root.removeArmed = false
     }
 
     implicitWidth: 293 
@@ -273,12 +282,21 @@ Rectangle {
                 colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colPrimaryContainerHover, 0.8)
                 colBackgroundActive: Appearance.colors.colPrimaryContainerActive
                 contentItem: StyledText {
-                    text: "Remove"
+                    text: root.removeArmed ? Translation.tr("Sure?") : Translation.tr("Remove")
                     color: Appearance.colors.colPrimary
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
-                onClicked: root.onRemove()
+                onClicked: {
+                    if (root.removeArmed) {
+                        removeDisarmTimer.stop()
+                        root.removeArmed = false
+                        root.onRemove()
+                    } else {
+                        root.removeArmed = true
+                        removeDisarmTimer.restart()
+                    }
+                }
             }
 
             GroupButton {
@@ -296,7 +314,7 @@ Rectangle {
                 colBackgroundHover: Appearance.colors.colPrimaryContainerHover
                 colBackgroundActive: Appearance.colors.colPrimaryContainerActive
                 contentItem: StyledText {
-                    text: "Apply"
+                    text: Translation.tr("Apply")
                     color: Appearance.colors.colOnPrimaryContainer
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter

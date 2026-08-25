@@ -280,9 +280,10 @@ switch() {
             fi
         else
             matugen_args+=(image "$imgpath")
-            generate_colors_material_args=(--path "$imgpath")
+            generate_colors_material_args+=(--path "$imgpath")
             if [[ -z "$colors_only_flag" ]]; then
                 set_wallpaper_path "$imgpath"
+                set_thumbnail_path ""
                 remove_restore
             fi
         fi

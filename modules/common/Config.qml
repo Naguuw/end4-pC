@@ -43,6 +43,19 @@ Singleton {
         obj[keys[keys.length - 1]] = convertedValue;
     }
 
+    // Write any pending adapter changes to disk immediately
+    function flush() {
+        if (!root.ready) return;
+        fileWriteTimer.stop();
+        configFileView.writeAdapter();
+    }
+
+    // Discard in-memory adapter state and re-read the file
+    function reloadFile() {
+        fileWriteTimer.stop();
+        configFileView.reload();
+    }
+
     Timer {
         id: fileReloadTimer
         interval: root.readWriteDelay

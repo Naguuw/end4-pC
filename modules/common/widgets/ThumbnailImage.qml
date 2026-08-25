@@ -14,6 +14,7 @@ StyledImage {
 
     property bool generateThumbnail: true
     required property string sourcePath
+    property string overrideThumbnailPath: ""
     property string thumbnailSizeName: Images.thumbnailSizeNameForDimensions(sourceSize.width, sourceSize.height)
     property string thumbnailPath: {
         if (sourcePath.length == 0) return;
@@ -22,7 +23,7 @@ StyledImage {
         const md5Hash = Qt.md5(`file://${encodedUrlWithoutFileProtocol}`);
         return `${Directories.genericCache}/thumbnails/${thumbnailSizeName}/${md5Hash}.png`;
     }
-    source: thumbnailPath
+    source: overrideThumbnailPath.length > 0 ? overrideThumbnailPath : thumbnailPath
 
     asynchronous: true
     smooth: true

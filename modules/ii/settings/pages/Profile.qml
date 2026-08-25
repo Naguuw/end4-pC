@@ -18,6 +18,21 @@ ContentPage {
         return "distro"
     }
     property string hostnameInput: SystemInfo.hostname
+    property bool presetsEmptyState: false
+
+    Timer {
+        running: Presets.folderModel.count === 0 && !page.presetsEmptyState
+        interval: 300
+        onTriggered: page.presetsEmptyState = true
+    }
+
+    Connections {
+        target: Presets.folderModel
+        function onCountChanged() {
+            if (Presets.folderModel.count > 0)
+                page.presetsEmptyState = false
+        }
+    }
 
     FolderListModel {
         id: avatarFolderModel
@@ -263,7 +278,7 @@ ContentPage {
             StyledText {
                 Layout.fillWidth: true
                 Layout.topMargin: 40
-                visible: Presets.folderModel.count === 0
+                visible: page.presetsEmptyState
                 horizontalAlignment: Text.AlignHCenter
                 text: Translation.tr("No presets yet")
                 color: Appearance.colors.colSubtext
@@ -275,7 +290,7 @@ ContentPage {
                 Layout.fillWidth: true
                 width: parent.width
                 spacing: 12
-                visible: Presets.folderModel.count > 0
+                visible: !page.presetsEmptyState
 
                 Repeater {
                     model: Presets.folderModel
@@ -284,8 +299,9 @@ ContentPage {
                         required property string fileName
                         required property string filePath
 
-                        property string presetName: fileName.replace(".json", "")
+                        property string presetName: fileName.replace(/\.json$/, "")
                         property string presetWallpaper: ""
+                        property string presetRawWallpaper: ""
                         property string presetDescription: ""
 
                         FileView {
@@ -295,6 +311,7 @@ ContentPage {
                                     const data = JSON.parse(text())
                                     const rawWallpaper = data?.background?.wallpaperPath ?? ""
                                     const isVideo = /\.(mp4|webm|mkv|avi|mov)$/i.test(rawWallpaper)
+                                    presetDelegate.presetRawWallpaper = rawWallpaper
                                     presetDelegate.presetWallpaper = isVideo
                                         ? (data?.background?.thumbnailPath ?? "")
                                         : rawWallpaper
@@ -308,7 +325,7 @@ ContentPage {
                         imageSource: presetDelegate.presetWallpaper
                         title: presetDelegate.presetName
                         description: presetDelegate.presetDescription !== "" ? presetDelegate.presetDescription : Translation.tr("Saved preset")
-                        onApply: () => Presets.apply(presetDelegate.presetName)
+                        onApply: () => Presets.apply(presetDelegate.presetName, presetDelegate.presetRawWallpaper)
                         onRemove: () => Presets.remove(presetDelegate.presetName)
                         onRename: (newName) => Presets.rename(presetDelegate.presetName, newName)
                     }

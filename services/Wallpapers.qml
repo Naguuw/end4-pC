@@ -22,9 +22,23 @@ Singleton {
     property url defaultFolder: Qt.resolvedUrl(`${Directories.pictures}/Wallpapers`)
     property alias folderModel: folderModel // Expose for direct binding when needed
     property string searchQuery: ""
-    readonly property list<string> extensions: [ // TODO: add videos
-        "jpg", "jpeg", "png", "webp", "avif", "bmp", "svg"
+    readonly property list<string> extensions: [
+        "jpg", "jpeg", "png", "webp", "avif", "bmp", "svg",
+        "mp4", "webm", "mkv", "avi", "mov"
     ]
+    readonly property list<string> videoExtensions: ["mp4", "webm", "mkv", "avi", "mov"]
+
+    function isVideo(path) {
+        if (!path) return false;
+        const extension = path.substring(path.lastIndexOf(".") + 1).toLowerCase();
+        return videoExtensions.includes(extension);
+    }
+
+    function thumbnailFor(path) {
+        if (!isVideo(path)) return path;
+        const basename = path.substring(path.lastIndexOf("/") + 1);
+        return `${Directories.config}/hypr/custom/scripts/mpvpaper_thumbnails/${basename}.jpg`;
+    }
     property list<string> wallpapers: [] // List of absolute file paths (without file://)
     readonly property bool thumbnailGenerationRunning: thumbgenProc.running
     property real thumbnailGenerationProgress: 0

@@ -29,10 +29,13 @@ Scope {
         GlobalStates.desktopMenuOpen = true
     }
 
+    readonly property string videoExtensions: "\\.(mp4|webm|mkv|avi|mov)$"
+
     function displayPathFor(path) {
         if (!path) return path
-        return /\.(mp4|webm|mkv|avi|mov)$/i.test(path)
-            ? Config.options.background.thumbnailPath
+        const basename = path.substring(path.lastIndexOf("/") + 1)
+        return new RegExp(videoExtensions, "i").test(path)
+            ? `${Directories.config}/hypr/custom/scripts/mpvpaper_thumbnails/${basename}.jpg`
             : path
     }
 
@@ -46,7 +49,7 @@ Scope {
             return "file://" + wallPath.substring(0, lastSlash)
         }
         showDirs: false
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp"]
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.avif", "*.bmp", "*.svg", "*.mp4", "*.webm", "*.mkv", "*.avi", "*.mov"]
     }
 
     property int carouselExtraCount: 5
@@ -67,8 +70,8 @@ Scope {
 
     property var carouselModel: {
         const current = FileUtils.trimFileProtocol(Config.options.background.wallpaperPath)
-        if (!current || current.length === 0) return randomWallpapers.map(p => root.displayPathFor(p))
-        return [root.displayPathFor(current), ...randomWallpapers.map(p => root.displayPathFor(p))]
+        if (!current || current.length === 0) return randomWallpapers
+        return [current, ...randomWallpapers]
     }
 
     // Menu window
@@ -155,6 +158,17 @@ Scope {
                             anchors.fill: parent
                             anchors.margins: 10
                             model: root.carouselModel
+                            delegate: StyledImage {
+                                property var modelData: parent?.modelData ?? ""
+                                property real fixedWidth: parent?.fixedWidth ?? width
+                                property real fixedHeight: parent?.fixedHeight ?? height
+                                source: "file://" + FileUtils.trimFileProtocol(root.displayPathFor(modelData))
+                                fillMode: Image.PreserveAspectCrop
+                                cache: true
+                                asynchronous: true
+                                sourceSize.width: fixedWidth * 1.5
+                                sourceSize.height: fixedHeight * 1.5
+                            }
                             onWallpaperSelected: (path) => {
                                 Wallpapers.select(path, Appearance.m3colors.darkmode)
                                 GlobalStates.desktopMenuOpen = false
@@ -281,10 +295,10 @@ Scope {
                             }
                             onClicked: {
                                 GlobalStates.desktopMenuOpen = false
-                                Wallpapers.openFallbackPicker(
-                                    Appearance.m3colors.darkmode,
-                                    Config.options.wallpaperSelector.liveWallpapersPath ?? ""
-                                )
+                                const livePath = (Config.options.wallpaperSelector.liveWallpapersPath ?? "").trim()
+                                if (livePath.length > 0)
+                                    Wallpapers.setDirectory(livePath)
+                                GlobalStates.wallpaperSelectorOpen = true
                             }
                         }
 

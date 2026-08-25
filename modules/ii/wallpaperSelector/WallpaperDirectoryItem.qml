@@ -1,6 +1,7 @@
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
@@ -12,7 +13,8 @@ MouseArea {
 
     required property var fileModelData
     property bool isDirectory: fileModelData.fileIsDir
-    property bool useThumbnail: Images.isValidImageByName(fileModelData.fileName)
+    property bool isVideoFile: Wallpapers.isVideo(fileModelData.filePath)
+    property bool useThumbnail: Images.isValidImageByName(fileModelData.fileName) || isVideoFile
     property alias colBackground: background.color
     property alias colText: wallpaperItemName.color
     property alias radius: background.radius
@@ -77,6 +79,8 @@ MouseArea {
 
                         generateThumbnail: false
                         sourcePath: fileModelData.filePath
+                        overrideThumbnailPath: root.isVideoFile ? Wallpapers.thumbnailFor(fileModelData.filePath) : ""
+                        fallbacks: root.isVideoFile ? [Quickshell.iconPath("video-x-generic")] : []
                         cache: false
                         fillMode: Image.PreserveAspectCrop
                         clip: true
@@ -136,6 +140,14 @@ MouseArea {
                         sourceSize.height: wallpaperItemColumnLayout.height - wallpaperItemColumnLayout.spacing - wallpaperItemName.height
                     }
 
+                }
+
+                MaterialSymbol {
+                    visible: root.isVideoFile
+                    anchors { right: parent.right; bottom: parent.bottom; margins: 8 }
+                    text: "movie"
+                    iconSize: Appearance.font.pixelSize.larger
+                    color: Appearance.colors.colOnLayer1
                 }
 
             }
