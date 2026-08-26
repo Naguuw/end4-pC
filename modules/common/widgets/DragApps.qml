@@ -153,10 +153,19 @@ Item {
                     }
                 }
 
+                function launchDesktopEntry() {
+                    const entry = slotItem.deskEntry ?? DesktopEntries.heuristicLookup(slotItem.appId)
+                    if (entry) {
+                        entry.execute()
+                    } else {
+                        console.warn("[Dock] No desktop entry found for app:", slotItem.appId)
+                    }
+                }
+
                 onClicked: {
                     const entry = slotItem.appEntry
                     if (!entry || entry.toplevels.length === 0) {
-                        slotItem.deskEntry?.execute()
+                        dockBtn.launchDesktopEntry()
                         return
                     }
                     const next = (slotItem._lastFocused + 1) % entry.toplevels.length
@@ -164,7 +173,7 @@ Item {
                     entry.toplevels[next].activate()
                 }
 
-                middleClickAction: () => { slotItem.deskEntry?.execute() }
+                middleClickAction: () => { dockBtn.launchDesktopEntry() }
                 altAction:         () => { TaskbarApps.togglePin(slotItem.appId) }
 
                 contentItem: Item {
@@ -225,6 +234,7 @@ Item {
             DragHandler {
                 id: dragHandler
                 target: null
+                dragThreshold: 20
                 grabPermissions: PointerHandler.CanTakeOverFromAnything
 
                 onActiveChanged: {

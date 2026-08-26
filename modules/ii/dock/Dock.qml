@@ -37,6 +37,9 @@ Scope {
                     || dragSlots.requestDockShow
                     || (!ToplevelManager.activeToplevel?.activated)
             }
+            readonly property real hiddenOffset: Config.options?.dock.hoverToReveal
+                ? implicitHeight - Config.options.dock.hoverRegionHeight
+                : implicitHeight + 1
 
             exclusiveZone: (root.pinned && !fullscreenOnThisMonitor)
                 ? implicitHeight - Appearance.sizes.hyprlandGapsOut
@@ -59,24 +62,24 @@ Scope {
                 height: parent.height
                 anchors {
                     top: parent.top
-                    topMargin: dockRoot.reveal
-                        ? 0
-                        : Config.options?.dock.hoverToReveal
-                            ? (dockRoot.implicitHeight - Config.options.dock.hoverRegionHeight)
-                            : (dockRoot.implicitHeight + 1)
+                    topMargin: dockRoot.reveal ? 0 : dockRoot.hiddenOffset
                     horizontalCenter: parent.horizontalCenter
                 }
                 implicitWidth: dockHoverRegion.implicitWidth + Appearance.sizes.elevationMargin * 2
                 hoverEnabled: true
 
-                Behavior on anchors.topMargin {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-
                 Item {
                     id: dockHoverRegion
                     anchors.fill: parent
                     implicitWidth: dockBackground.implicitWidth
+
+                    transform: Translate {
+                        y: dockRoot.reveal ? 0 : dockRoot.hiddenOffset
+
+                        Behavior on y {
+                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        }
+                    }
 
                     Item {
                         id: dockBackground

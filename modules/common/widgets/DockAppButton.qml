@@ -62,9 +62,18 @@ DockButton {
         }
     }
 
+    function launchDesktopEntry() {
+        const entry = root.desktopEntry ?? DesktopEntries.heuristicLookup(appToplevel.appId);
+        if (entry) {
+            entry.execute();
+        } else {
+            console.warn("[Dock] No desktop entry found for app:", appToplevel.appId);
+        }
+    }
+
     onClicked: {
         if (appToplevel.toplevels.length === 0) {
-            root.desktopEntry?.execute();
+            root.launchDesktopEntry();
             return;
         }
         lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
@@ -72,7 +81,7 @@ DockButton {
     }
 
     middleClickAction: () => {
-        root.desktopEntry?.execute();
+        root.launchDesktopEntry();
     }
 
     altAction: () => {
