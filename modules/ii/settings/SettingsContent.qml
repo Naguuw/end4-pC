@@ -27,6 +27,12 @@ Item {
             let pageName = parts[0];
             let searchTerm = parts.length > 1 ? parts[1] : "";
 
+            if (pageName.toLowerCase() === "profile") {
+                root.showingProfile = true;
+                GlobalStates.settingsPage = "";
+                return;
+            }
+
             const idx = root.pages.findIndex(p => p.name.toLowerCase() === pageName.toLowerCase());
             
             if (idx >= 0) {

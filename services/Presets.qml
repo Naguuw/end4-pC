@@ -66,8 +66,6 @@ Singleton {
         Config.flush();
         runJob({
             args: ["--save", clean].concat(description !== undefined ? [description] : []),
-            successMessage: Translation.tr("Preset saved: %1").arg(clean),
-            failureMessage: Translation.tr("Failed to save preset: %1").arg(clean),
         });
     }
 
@@ -88,8 +86,6 @@ Singleton {
         if (clean.length === 0) return;
         runJob({
             args: ["--remove", clean],
-            successMessage: Translation.tr("Preset removed: %1").arg(clean),
-            failureMessage: Translation.tr("Failed to remove preset: %1").arg(clean),
         });
     }
 
@@ -110,8 +106,6 @@ Singleton {
         if (description !== undefined) args.push(description);
         runJob({
             args: args,
-            successMessage: Translation.tr("Preset renamed: %1 → %2").arg(old).arg(clean),
-            failureMessage: Translation.tr("Failed to rename preset: %1").arg(old),
         });
     }
 
@@ -140,7 +134,6 @@ Singleton {
             const finished = scriptProc.job;
             scriptProc.job = null;
             if (finished !== null) {
-                root.notify(exitCode === 0 ? finished.successMessage : finished.failureMessage, exitCode !== 0);
                 root.refresh();
             }
             const next = scriptProc.pendingJob;
@@ -154,10 +147,6 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             Config.reloadFile();
             Config.blockWrites = false;
-            root.notify(
-                exitCode === 0 ? Translation.tr("Preset applied") : Translation.tr("Failed to apply preset"),
-                exitCode !== 0
-            );
         }
     }
 }
