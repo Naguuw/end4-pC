@@ -81,16 +81,16 @@ PanelWindow {
     property var mouseButton: null
     property var imageRegions: []
     readonly property list<var> windowRegions: RegionFunctions.filterWindowRegionsByLayers(
-        root.windows.filter(w => w.workspace.id === root.activeWorkspaceId),
+        root.windows.filter(w => w.workspace.id === root.activeWorkspaceId).map(window => {
+            return {
+                at: [window.at[0] - root.monitorOffsetX, window.at[1] - root.monitorOffsetY],
+                size: [window.size[0], window.size[1]],
+                class: window.class,
+                title: window.title,
+            }
+        }),
         root.layerRegions
-    ).map(window => {
-        return {
-            at: [window.at[0] - root.monitorOffsetX, window.at[1] - root.monitorOffsetY],
-            size: [window.size[0], window.size[1]],
-            class: window.class,
-            title: window.title,
-        }
-    })
+    )
     readonly property list<var> layerRegions: {
         const layersOfThisMonitor = root.layers[root.monitor?.name]
         const topLayers = layersOfThisMonitor?.levels["2"]

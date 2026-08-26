@@ -4,21 +4,19 @@ import Quickshell
 Singleton {
     id: root
 
+    function intersectionArea(regionA, regionB) {
+        const interX1 = Math.max(regionA.at[0], regionB.at[0]);
+        const interY1 = Math.max(regionA.at[1], regionB.at[1]);
+        const interX2 = Math.min(regionA.at[0] + regionA.size[0], regionB.at[0] + regionB.size[0]);
+        const interY2 = Math.min(regionA.at[1] + regionA.size[1], regionB.at[1] + regionB.size[1]);
+
+        return Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
+    }
+
     function intersectionOverUnion(regionA, regionB) {
-        // region: { at: [x, y], size: [w, h] }
-        const ax1 = regionA.at[0], ay1 = regionA.at[1];
-        const ax2 = ax1 + regionA.size[0], ay2 = ay1 + regionA.size[1];
-        const bx1 = regionB.at[0], by1 = regionB.at[1];
-        const bx2 = bx1 + regionB.size[0], by2 = by1 + regionB.size[1];
-
-        const interX1 = Math.max(ax1, bx1);
-        const interY1 = Math.max(ay1, by1);
-        const interX2 = Math.min(ax2, bx2);
-        const interY2 = Math.min(ay2, by2);
-
-        const interArea = Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
-        const areaA = (ax2 - ax1) * (ay2 - ay1);
-        const areaB = (bx2 - bx1) * (by2 - by1);
+        const interArea = intersectionArea(regionA, regionB);
+        const areaA = (regionA.size[0]) * (regionA.size[1]);
+        const areaB = (regionB.size[0]) * (regionB.size[1]);
         const unionArea = areaA + areaB - interArea;
 
         return unionArea > 0 ? interArea / unionArea : 0;
@@ -51,10 +49,12 @@ Singleton {
         return keep;
     }
 
-    function filterWindowRegionsByLayers(windowRegions, layerRegions) {
+    function filterWindowRegionsByLayers(windowRegions, layerRegions, coverageThreshold = 0.5) {
         return windowRegions.filter(windowRegion => {
+            const windowArea = windowRegion.size[0] * windowRegion.size[1];
+            if (windowArea <= 0) return false;
             for (let i = 0; i < layerRegions.length; ++i) {
-                if (intersectionOverUnion(windowRegion, layerRegions[i]) > 0)
+                if (intersectionArea(windowRegion, layerRegions[i]) / windowArea > coverageThreshold)
                     return false;
             }
             return true;
