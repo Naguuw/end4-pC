@@ -42,8 +42,7 @@ MouseArea {
         const cellW = item?.cellWidth ?? (wallpaperGridBackground.width / root.columns);
         const cellH = item?.cellHeight ?? (cellW / root.previewCellAspectRatio);
         const thumbnailSizeName = Images.thumbnailSizeNameForDimensions(cellW - totalImageMargin, cellH - totalImageMargin);
-        Wallpapers.setDirectory(`${Directories.pictures}/Wallpapers`);
-        Qt.callLater(() => Wallpapers.generateThumbnail(thumbnailSizeName));
+        Wallpapers.generateThumbnail(thumbnailSizeName);
     }
 
     function handleFilePasting(event) {

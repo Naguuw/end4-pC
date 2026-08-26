@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Generate thumbnails for files using ImageMagick, following Freedesktop spec
+# Generate thumbnails for files (images & videos) using ImageMagick and FFmpeg
 # Usage:
-#   ./generate-thumbnails-magick.sh --file <path>
-#   ./generate-thumbnails-magick.sh --directory <path>
+#   ./generate-thumbnails-magick.sh --file <path> [--size <normal|large|x-large|xx-large>] [--machine_progress]
+#   ./generate-thumbnails-magick.sh --directory <path> [--size <normal|large|x-large|xx-large>] [--machine_progress]
 
 set -e
 
@@ -14,12 +14,12 @@ get_thumbnail_size() {
         large) echo 256 ;;
         x-large) echo 512 ;;
         xx-large) echo 1024 ;;
-        *) echo 128 ;;
+        *) echo 256 ;;
     esac
 }
 
 usage() {
-    echo "Usage: $0 --file <path> | --directory <path>"
+    echo "Usage: $0 (--file <path> | --directory <path>) [--size <size>] [--machine_progress]"
     exit 1
 }
 
@@ -43,34 +43,71 @@ urlencode() {
     echo "$encoded"
 }
 
+is_video() {
+    local ext="${1##*.}"
+    ext="${ext,,}"
+    case "$ext" in
+        mp4|webm|mkv|avi|mov|flv|wmv) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+is_image() {
+    local ext="${1##*.}"
+    ext="${ext,,}"
+    case "$ext" in
+        jpg|jpeg|png|webp|avif|bmp|svg|tif|tiff) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+VIDEO_THUMBNAIL_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/custom/scripts/mpvpaper_thumbnails"
+
 generate_thumbnail() {
     local src="$1"
     local abs_path
-    abs_path="$(realpath "$src")"
-    # Skip files with multiple frames (GIFs, videos, etc.)
-    case "${abs_path,,}" in
-        *.gif|*.mp4|*.webm|*.mkv|*.avi|*.mov)
-            return
-            ;;
-    esac
+    abs_path="$(realpath "$src" 2>/dev/null || echo "$src")"
+    [ -f "$abs_path" ] || return 0
+
     local encoded_path
     encoded_path="$(urlencode "$abs_path")"
-    local uri
-    uri="file://$encoded_path"
+    local uri="file://$encoded_path"
     local hash
     hash="$(md5 "$uri")"
     local out="$CACHE_DIR/$hash.png"
     mkdir -p "$CACHE_DIR"
-    if [ -f "$out" ]; then
-        return
+
+    if is_video "$abs_path"; then
+        if command -v ffmpeg &>/dev/null; then
+            mkdir -p "$VIDEO_THUMBNAIL_DIR"
+            local vid_basename
+            vid_basename="$(basename "$abs_path")"
+            local vid_thumb="$VIDEO_THUMBNAIL_DIR/${vid_basename}.jpg"
+            
+            # Generate thumbnail frame for mpvpaper / quickshell
+            if [ ! -f "$vid_thumb" ]; then
+                ffmpeg -y -ss 00:00:01 -i "$abs_path" -vframes 1 -q:v 2 "$vid_thumb" &>/dev/null || \
+                ffmpeg -y -i "$abs_path" -vframes 1 -q:v 2 "$vid_thumb" &>/dev/null || true
+            fi
+
+            # Also generate freedesktop cached png if possible
+            if [ -f "$vid_thumb" ] && [ ! -f "$out" ]; then
+                magick "$vid_thumb" -resize "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" "$out" 2>/dev/null || true
+            fi
+        fi
+    elif is_image "$abs_path"; then
+        if [ ! -f "$out" ]; then
+            magick "$abs_path" -resize "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" "$out" 2>/dev/null || true
+        fi
     fi
-    magick "$abs_path" -resize "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" "$out"
 }
 
 # Parse arguments
-SIZE_NAME="normal"
+SIZE_NAME="large"
 MODE=""
 TARGET=""
+MACHINE_PROGRESS=false
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --file|-f)
@@ -87,16 +124,18 @@ while [[ $# -gt 0 ]]; do
             SIZE_NAME="$2"
             shift 2
             ;;
+        --machine_progress)
+            MACHINE_PROGRESS=true
+            shift
+            ;;
         *)
             usage
             ;;
     esac
-    # Only one mode allowed
-    [[ -n "$MODE" ]] && break
 done
 
 THUMBNAIL_SIZE="$(get_thumbnail_size "$SIZE_NAME")"
-CACHE_DIR="$HOME/.cache/thumbnails/$SIZE_NAME"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails/$SIZE_NAME"
 
 if [ -z "$MODE" ] || [ -z "$TARGET" ]; then
     usage
@@ -109,17 +148,37 @@ case "$MODE" in
             exit 2
         fi
         generate_thumbnail "$TARGET"
+        if [ "$MACHINE_PROGRESS" = true ]; then
+            echo "PROGRESS 1/1 FILE $(realpath "$TARGET")"
+        fi
         ;;
     dir)
         if [ ! -d "$TARGET" ]; then
             echo "Directory not found: $TARGET"
             exit 2
         fi
+
+        files=()
         for f in "$TARGET"/*; do
             [ -f "$f" ] || continue
-            generate_thumbnail "$f" &
+            if is_video "$f" || is_image "$f"; then
+                files+=("$f")
+            fi
         done
-        wait
+
+        total=${#files[@]}
+        if [ "$total" -eq 0 ]; then
+            exit 0
+        fi
+
+        current=0
+        for f in "${files[@]}"; do
+            generate_thumbnail "$f"
+            current=$((current + 1))
+            if [ "$MACHINE_PROGRESS" = true ]; then
+                echo "PROGRESS $current/$total FILE $(realpath "$f")"
+            fi
+        done
         ;;
     *)
         usage

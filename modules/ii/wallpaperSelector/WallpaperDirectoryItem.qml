@@ -90,25 +90,29 @@ MouseArea {
 
                         Connections {
                             function onThumbnailGenerated(directory) {
-                                if (thumbnailImage.status !== Image.Error)
+                                if (thumbnailImage.status !== Image.Error && thumbnailImage.status !== Image.Null)
                                     return ;
 
                                 if (FileUtils.parentDirectory(thumbnailImage.sourcePath) !== FileUtils.trimFileProtocol(directory))
                                     return ;
 
                                 thumbnailImage.source = "";
-                                thumbnailImage.source = thumbnailImage.thumbnailPath;
+                                thumbnailImage.source = thumbnailImage.overrideThumbnailPath.length > 0
+                                    ? thumbnailImage.overrideThumbnailPath
+                                    : thumbnailImage.thumbnailPath;
                             }
 
                             function onThumbnailGeneratedFile(filePath) {
-                                if (thumbnailImage.status !== Image.Error)
+                                if (thumbnailImage.status !== Image.Error && thumbnailImage.status !== Image.Null)
                                     return ;
 
                                 if (Qt.resolvedUrl(thumbnailImage.sourcePath) !== Qt.resolvedUrl(filePath))
                                     return ;
 
                                 thumbnailImage.source = "";
-                                thumbnailImage.source = thumbnailImage.thumbnailPath;
+                                thumbnailImage.source = thumbnailImage.overrideThumbnailPath.length > 0
+                                    ? thumbnailImage.overrideThumbnailPath
+                                    : thumbnailImage.thumbnailPath;
                             }
 
                             target: Wallpapers
