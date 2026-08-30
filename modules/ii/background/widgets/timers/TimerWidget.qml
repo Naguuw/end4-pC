@@ -131,6 +131,8 @@ AbstractBackgroundWidget {
             value: TimerService.formatSeconds(TimerService.pomodoroSecondsLeft)
             label: TimerService.pomodoroBreak ? "Break" : "Focus"
             running: TimerService.pomodoroRunning
+            bgColor: Appearance.colors.colTertiaryContainer
+            shapeColor: Appearance.colors.colTertiary
             shape: MaterialShape.Shape.Flower
             onToggle: () => TimerService.togglePomodoro()
             onReset: () => TimerService.resetPomodoro()
@@ -156,8 +158,6 @@ AbstractBackgroundWidget {
             label: "Countdown"
             running: TimerService.countdownRunning
             shape: MaterialShape.Shape.Bun
-            bgColor: Appearance.colors.colTertiaryContainer
-            shapeColor: Appearance.colors.colTertiary
             onToggle: () => TimerService.toggleCountdown()
             onReset: () => TimerService.resetCountdown()
 
@@ -179,7 +179,7 @@ AbstractBackgroundWidget {
                             text: "+" + modelData + "m"
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             font.weight: Font.DemiBold
-                            color: Appearance.colors.colOnTertiaryContainer
+                            color: Appearance.colors.colOnPrimaryContainer
                         }
 
                         MouseArea {

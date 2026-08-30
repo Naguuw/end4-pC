@@ -19,7 +19,7 @@ AbstractBackgroundWidget {
     readonly property real cardSpacing: 12
 
     implicitWidth: root.cardWidth
-    implicitHeight: root.cardHeight * 2 + root.cardSpacing * 2
+    implicitHeight: root.cardHeight * 2 + root.cardSpacing
 
     property string mode: "list" // "list" | "edit"
     property string editingText: ""
@@ -117,22 +117,22 @@ AbstractBackgroundWidget {
                         required property int index
 
                         width: todoListView.width
-                        implicitHeight: 58
+                        implicitHeight: 55
                         padding: 0
                         background: null
                         clip: true
 
                         property color bg: {
                             const cyclePos = index % 3
-                            if (cyclePos === 0) return Appearance.colors.colPrimary
+                            if (cyclePos === 0) return Appearance.colors.colTertiary
                             if (cyclePos === 1) return Appearance.colors.colSecondary
-                            return Appearance.colors.colTertiary
+                            return Appearance.colors.colPrimary
                         }
                         property color fg: {
                             const cyclePos = index % 3
-                            if (cyclePos === 0) return Appearance.colors.colOnPrimary
+                            if (cyclePos === 0) return Appearance.colors.colOnTertiary
                             if (cyclePos === 1) return Appearance.colors.colOnSecondary
-                            return Appearance.colors.colOnTertiary
+                            return Appearance.colors.colOnPrimary
                         }
 
                         contentItem: Rectangle {
