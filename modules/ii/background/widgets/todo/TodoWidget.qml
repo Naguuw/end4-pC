@@ -217,17 +217,20 @@ AbstractBackgroundWidget {
 
                                 RippleButton {
                                     id: deleteBtn
+                                    padding: 0
                                     visible: taskCard.modelData.done
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
-                                    buttonRadius: Appearance.rounding.full
+                                    Layout.alignment: Qt.AlignVCenter
+                                    buttonRadius: 14
                                     colBackground: "transparent"
                                     colBackgroundHover: ColorUtils.transparentize(taskCard.fg, 0.8)
                                     colRipple: ColorUtils.transparentize(taskCard.fg, 0.6)
                                     onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
 
                                     contentItem: MaterialSymbol {
-                                        anchors.centerIn: parent
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
                                         text: "delete"
                                         iconSize: Appearance.font.pixelSize.normal
                                         color: taskCard.fg

@@ -16,13 +16,14 @@ Singleton {
     property var list: []
 
     function addNote(content, attachments) {
+        const now = Date.now()
         const item = {
-            "id": Date.now().toString() + "-" + Math.floor(Math.random() * 10000),
+            "id": now.toString() + "-" + Math.floor(Math.random() * 10000),
             "content": content ?? "",
             "attachments": attachments ?? [],
-            "createdAt": Date.now()
+            "createdAt": now
         }
-        list.push(item)
+        list.unshift(item)
         root.list = list.slice(0)
         notesFileView.setText(JSON.stringify(root.list))
         return item.id
