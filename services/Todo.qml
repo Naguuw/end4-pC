@@ -57,6 +57,11 @@ Singleton {
         }
     }
 
+    function clearDone() {
+        root.list = root.list.filter(item => !item.done)
+        todoFileView.setText(JSON.stringify(root.list))
+    }
+
     function refresh() {
         todoFileView.reload()
     }

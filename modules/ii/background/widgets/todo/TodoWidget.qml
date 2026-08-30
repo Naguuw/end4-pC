@@ -95,11 +95,35 @@ AbstractBackgroundWidget {
                     Item { Layout.fillWidth: true }
 
                     ToolbarPairedFab {
+                        Layout.alignment: Qt.AlignVCenter
+                        baseSize: 38
+                        iconText: "delete_sweep"
+                        visible: opacity > 0
+                        opacity: (Todo.list ?? []).some(t => t.done) ? 1 : 0
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Appearance.animation.elementMoveFast.duration
+                                easing.type: Appearance.animation.elementMoveFast.type
+                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                            }
+                        }
+                        onClicked: Todo.clearDone()
+
+                        StyledToolTip {
+                            text: Translation.tr("Clear completed tasks")
+                        }
+                    }
+
+                    ToolbarPairedFab {
                         Layout.rightMargin: 4
                         Layout.alignment: Qt.AlignVCenter
                         baseSize: 38
                         iconText: "add"
                         onClicked: root.openNewTask()
+
+                        StyledToolTip {
+                            text: Translation.tr("Add task")
+                        }
                     }
                 }
 
@@ -109,7 +133,9 @@ AbstractBackgroundWidget {
                     Layout.fillHeight: true
                     clip: true
                     spacing: 6
-                    model: Todo.list
+                    model: (Todo.list ?? [])
+                        .map((item, i) => Object.assign({}, item, { originalIndex: i }))
+                        .sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1))
 
                     delegate: SwipeDelegate {
                         id: taskCard
@@ -145,7 +171,7 @@ AbstractBackgroundWidget {
                                 anchors {
                                     left: parent.left; right: parent.right
                                     verticalCenter: parent.verticalCenter
-                                    leftMargin: 4; rightMargin: 12
+                                    leftMargin: 4; rightMargin: 10
                                 }
                                 spacing: 4
 
@@ -173,9 +199,9 @@ AbstractBackgroundWidget {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             if (taskCard.modelData.done)
-                                                Todo.markUnfinished(taskCard.index)
+                                                Todo.markUnfinished(taskCard.modelData.originalIndex)
                                             else
-                                                Todo.markDone(taskCard.index)
+                                                Todo.markDone(taskCard.modelData.originalIndex)
                                         }
                                     }
                                 }
@@ -187,6 +213,29 @@ AbstractBackgroundWidget {
                                     elide: Text.ElideRight
                                     maximumLineCount: 1
                                     font.strikeout: taskCard.modelData.done
+                                }
+
+                                RippleButton {
+                                    id: deleteBtn
+                                    visible: taskCard.modelData.done
+                                    Layout.preferredWidth: 28
+                                    Layout.preferredHeight: 28
+                                    buttonRadius: Appearance.rounding.full
+                                    colBackground: "transparent"
+                                    colBackgroundHover: ColorUtils.transparentize(taskCard.fg, 0.8)
+                                    colRipple: ColorUtils.transparentize(taskCard.fg, 0.6)
+                                    onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
+
+                                    contentItem: MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        text: "delete"
+                                        iconSize: Appearance.font.pixelSize.normal
+                                        color: taskCard.fg
+                                    }
+
+                                    StyledToolTip {
+                                        text: Translation.tr("Delete task")
+                                    }
                                 }
                             }
                         }
@@ -205,7 +254,7 @@ AbstractBackgroundWidget {
                                 color: Appearance.colors.colOnError
                             }
 
-                            SwipeDelegate.onClicked: Todo.deleteItem(taskCard.index)
+                            SwipeDelegate.onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
                         }
                     }
                 }
