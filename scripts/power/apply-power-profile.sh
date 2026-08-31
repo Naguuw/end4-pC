@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Script: apply-power-profile.sh
-# Purpose: Standalone Power Profile Manager (TLP + CPU/GPU Scaling)
-#          Silent, minimal, and fully decoupled from PPD.
+# Purpose: Standalone Power Profile Manager with Hardware Thermal Limits
+#          - Power Saver: Max 70°C (Boost OFF, EPP balance_power)
+#          - Balanced:    Max 80°C (Boost ON, EPP balance_performance, 80°C cap)
+#          - Performance: Max 85°C (Boost ON, EPP performance, 85°C cap)
 # ==============================================================================
 
 PROFILE="${1:-balanced}"
@@ -48,9 +50,25 @@ set_gpu_profile() {
     write_sysfs "$1" "/sys/class/drm/card*/device/power_dpm_force_performance_level"
 }
 
+apply_ryzenadj() {
+    local temp_limit="$1"
+    local stapm_limit="$2"
+    
+    if command -v ryzenadj >/dev/null 2>&1; then
+        local args="--tctl-temp=${temp_limit}"
+        [ -n "$stapm_limit" ] && args+=" --stapm-limit=${stapm_limit}"
+        
+        # Try direct (SUID), then sudo -n
+        ryzenadj $args >/dev/null 2>&1 || sudo -n ryzenadj $args >/dev/null 2>&1 || true
+    fi
+}
+
 case "$PROFILE" in
     power-saver|power_saver|powersave|eco)
-        # Disable CPU Turbo Boost (saves huge battery & stays at base clock)
+        # Hardware Thermal limit: Max 70°C, 15W STAPM
+        apply_ryzenadj 70 15000
+
+        # CPU settings
         set_cpu_boost 0
         set_cpu_epp "balance_power"
         set_cpu_governor "powersave"
@@ -65,7 +83,10 @@ case "$PROFILE" in
         ;;
 
     balanced|balance)
-        # Enable Turbo Boost
+        # Hardware Thermal limit: Max 80°C, 28W STAPM
+        apply_ryzenadj 80 28000
+
+        # CPU settings
         set_cpu_boost 1
         set_cpu_epp "balance_performance"
         set_cpu_governor "powersave"
@@ -75,7 +96,10 @@ case "$PROFILE" in
         ;;
 
     performance|perf)
-        # Enable Turbo Boost
+        # Hardware Thermal limit: Max 85°C, 45W STAPM
+        apply_ryzenadj 85 45000
+
+        # CPU settings
         set_cpu_boost 1
         set_cpu_epp "performance"
         set_cpu_governor "performance"
