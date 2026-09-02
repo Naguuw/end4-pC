@@ -12,9 +12,6 @@ Singleton {
         if (summary.length === 0) return defaultType;
 
         const keywordsToTypes = {
-            'eco': 'energy_savings_leaf',
-            'balanced': 'airwave',
-            'performance': 'local_fire_department',
             'reboot': 'restart_alt',
             'record': 'screen_record',
             'battery': 'power',

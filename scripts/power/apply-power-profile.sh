@@ -2,9 +2,9 @@
 # ==============================================================================
 # Script: apply-power-profile.sh
 # Purpose: Standalone Power Profile Manager with Hardware Thermal Limits
-#          - Power Saver: Max 70°C (Boost OFF, EPP balance_power)
-#          - Balanced:    Max 80°C (Boost ON, EPP balance_performance, 80°C cap)
-#          - Performance: Max 85°C (Boost ON, EPP performance, 85°C cap)
+#          - Power Saver: Max 65°C (Boost OFF, EPP balance_power)
+#          - Balanced:    Max 75°C (Boost ON, EPP balance_performance, 80°C cap)
+#          - Performance: Max 80°C (Boost ON, EPP performance, 85°C cap)
 # ==============================================================================
 
 PROFILE="${1:-balanced}"
@@ -65,8 +65,8 @@ apply_ryzenadj() {
 
 case "$PROFILE" in
     power-saver|power_saver|powersave|eco)
-        # Hardware Thermal limit: Max 70°C, 15W STAPM
-        apply_ryzenadj 70 15000
+        # Hardware Thermal limit: Max 65°C, 15W STAPM
+        apply_ryzenadj 65 15000
 
         # CPU settings
         set_cpu_boost 0
@@ -83,8 +83,8 @@ case "$PROFILE" in
         ;;
 
     balanced|balance)
-        # Hardware Thermal limit: Max 80°C, 28W STAPM
-        apply_ryzenadj 80 28000
+        # Hardware Thermal limit: Max 75°C, 28W STAPM
+        apply_ryzenadj 75 28000
 
         # CPU settings
         set_cpu_boost 1
@@ -96,8 +96,8 @@ case "$PROFILE" in
         ;;
 
     performance|perf)
-        # Hardware Thermal limit: Max 85°C, 45W STAPM
-        apply_ryzenadj 85 45000
+        # Hardware Thermal limit: Max 80°C, 45W STAPM
+        apply_ryzenadj 80 45000
 
         # CPU settings
         set_cpu_boost 1

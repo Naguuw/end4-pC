@@ -42,7 +42,7 @@ apply_kitty() {
   done
 
   # Reload
-  kill -SIGUSR1 $(pidof kitty)
+  pkill -USR1 -x kitty 2>/dev/null || kill -SIGUSR1 $(pidof kitty) 2>/dev/null || true
 }
 
 apply_anyterm() {
@@ -70,9 +70,65 @@ apply_anyterm() {
   done
 }
 
+apply_term_fast() {
+  mkdir -p "$STATE_DIR"/user/generated/terminal
+  python3 - <<EOF
+import os
+
+state_dir = "$STATE_DIR"
+script_dir = "$SCRIPT_DIR"
+scss_path = f"{state_dir}/user/generated/material_colors.scss"
+kitty_template = f"{script_dir}/terminal/kitty-theme.conf"
+kitty_out = f"{state_dir}/user/generated/terminal/kitty-theme.conf"
+seq_template = f"{script_dir}/terminal/sequences.txt"
+seq_out = f"{state_dir}/user/generated/terminal/sequences.txt"
+
+color_map = {}
+if os.path.isfile(scss_path):
+    with open(scss_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("$") and ":" in line:
+                var, val = line.split(":", 1)
+                var = var.strip()
+                val = val.split(";")[0].strip().lstrip("#")
+                color_map[f"{var} #"] = val
+
+if os.path.isfile(kitty_template):
+    with open(kitty_template, "r") as f:
+        content = f.read()
+    for k, v in color_map.items():
+        content = content.replace(k, v)
+    with open(kitty_out, "w") as f:
+        f.write(content)
+
+if os.path.isfile(seq_template):
+    with open(seq_template, "r") as f:
+        content = f.read()
+    for k, v in color_map.items():
+        content = content.replace(k, v)
+    content = content.replace("\$alpha", "$term_alpha")
+    with open(seq_out, "w") as f:
+        f.write(content)
+EOF
+
+  # Send sequences to open terminals
+  if [ -f "$STATE_DIR/user/generated/terminal/sequences.txt" ]; then
+    for file in /dev/pts/*; do
+      if [[ $file =~ ^/dev/pts/[0-9]+$ ]]; then
+        {
+        cat "$STATE_DIR"/user/generated/terminal/sequences.txt >"$file"
+        } & disown || true
+      fi
+    done
+  fi
+
+  # Reload Kitty
+  pkill -USR1 -x kitty 2>/dev/null || kill -SIGUSR1 $(pidof kitty) 2>/dev/null || true
+}
+
 apply_term() {
-  apply_kitty
-  apply_anyterm
+  apply_term_fast
 }
 
 apply_qt() {
@@ -85,11 +141,11 @@ CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 if [ -f "$CONFIG_FILE" ]; then
   enable_terminal=$(jq -r '.appearance.wallpaperTheming.enableTerminal' "$CONFIG_FILE")
   if [ "$enable_terminal" = "true" ]; then
-    apply_term &
+    apply_term
   fi
 else
   echo "Config file not found at $CONFIG_FILE. Applying terminal theming by default."
-  apply_term &
+  apply_term
 fi
 
 # apply_qt & # Qt theming is already handled by kde-material-colors

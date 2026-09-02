@@ -127,137 +127,176 @@ AbstractBackgroundWidget {
                     }
                 }
 
-                StyledListView {
-                    id: todoListView
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    clip: true
-                    spacing: 6
-                    model: (Todo.list ?? [])
-                        .map((item, i) => Object.assign({}, item, { originalIndex: i }))
-                        .sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1))
 
-                    delegate: SwipeDelegate {
-                        id: taskCard
-                        required property var modelData
-                        required property int index
+                    // Empty placeholder
+                    Item {
+                        anchors.fill: parent
+                        visible: (Todo.list ?? []).length === 0
 
-                        width: todoListView.width
-                        implicitHeight: 55
-                        padding: 0
-                        background: null
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            MaterialSymbol {
+                                Layout.alignment: Qt.AlignHCenter
+                                iconSize: 38
+                                color: Appearance.colors.colOnPrimaryContainer
+                                opacity: 0.4
+                                text: "checklist"
+                            }
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                font.weight: Font.Medium
+                                color: Appearance.colors.colOnPrimaryContainer
+                                opacity: 0.65
+                                text: Translation.tr("No tasks yet")
+                            }
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colOnPrimaryContainer
+                                opacity: 0.45
+                                text: Translation.tr("Click + to add a task")
+                            }
+                        }
+                    }
+
+                    StyledListView {
+                        id: todoListView
+                        anchors.fill: parent
                         clip: true
+                        spacing: 6
+                        visible: (Todo.list ?? []).length > 0
+                        model: (Todo.list ?? [])
+                            .map((item, i) => Object.assign({}, item, { originalIndex: i }))
+                            .sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1))
 
-                        property color bg: {
-                            const cyclePos = index % 3
-                            if (cyclePos === 0) return Appearance.colors.colTertiary
-                            if (cyclePos === 1) return Appearance.colors.colSecondary
-                            return Appearance.colors.colPrimary
-                        }
-                        property color fg: {
-                            const cyclePos = index % 3
-                            if (cyclePos === 0) return Appearance.colors.colOnTertiary
-                            if (cyclePos === 1) return Appearance.colors.colOnSecondary
-                            return Appearance.colors.colOnPrimary
-                        }
+                        delegate: SwipeDelegate {
+                            id: taskCard
+                            required property var modelData
+                            required property int index
 
-                        contentItem: Rectangle {
-                            radius: Appearance.rounding.normal
-                            color: taskCard.bg
-                            width: parent.width - Math.abs(taskCard.swipe.position) * 6
-                            opacity: taskCard.modelData.done ? 0.6 : 1
+                            width: todoListView.width
+                            implicitHeight: 55
+                            padding: 0
+                            background: null
+                            clip: true
 
-                            RowLayout {
-                                anchors {
-                                    left: parent.left; right: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: 4; rightMargin: 10
-                                }
-                                spacing: 4
+                            property color bg: {
+                                const cyclePos = index % 3
+                                if (cyclePos === 0) return Appearance.colors.colTertiary
+                                if (cyclePos === 1) return Appearance.colors.colSecondary
+                                return Appearance.colors.colPrimary
+                            }
+                            property color fg: {
+                                const cyclePos = index % 3
+                                if (cyclePos === 0) return Appearance.colors.colOnTertiary
+                                if (cyclePos === 1) return Appearance.colors.colOnSecondary
+                                return Appearance.colors.colOnPrimary
+                            }
 
-                                Rectangle {
-                                    Layout.leftMargin: 8
-                                    Layout.preferredWidth: 26
-                                    Layout.preferredHeight: 26
-                                    radius: Appearance.rounding.full
-                                    color: taskCard.modelData.done
-                                        ? ColorUtils.transparentize(taskCard.fg, 0.8)
-                                        : "transparent"
-                                    border.width: 2
-                                    border.color: taskCard.fg
+                            contentItem: Rectangle {
+                                radius: Appearance.rounding.normal
+                                color: taskCard.bg
+                                width: parent.width - Math.abs(taskCard.swipe.position) * 6
+                                opacity: taskCard.modelData.done ? 0.6 : 1
 
-                                    MaterialSymbol {
-                                        anchors.centerIn: parent
-                                        visible: taskCard.modelData.done
-                                        text: "check"
-                                        iconSize: Appearance.font.pixelSize.normal
-                                        color: taskCard.fg
+                                RowLayout {
+                                    anchors {
+                                        left: parent.left; right: parent.right
+                                        verticalCenter: parent.verticalCenter
+                                        leftMargin: 4; rightMargin: 10
+                                    }
+                                    spacing: 4
+
+                                    Rectangle {
+                                        Layout.leftMargin: 8
+                                        Layout.preferredWidth: 26
+                                        Layout.preferredHeight: 26
+                                        radius: Appearance.rounding.full
+                                        color: taskCard.modelData.done
+                                            ? ColorUtils.transparentize(taskCard.fg, 0.8)
+                                            : "transparent"
+                                        border.width: 2
+                                        border.color: taskCard.fg
+
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            visible: taskCard.modelData.done
+                                            text: "check"
+                                            iconSize: Appearance.font.pixelSize.normal
+                                            color: taskCard.fg
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (taskCard.modelData.done)
+                                                    Todo.markUnfinished(taskCard.modelData.originalIndex)
+                                                else
+                                                    Todo.markDone(taskCard.modelData.originalIndex)
+                                            }
+                                        }
                                     }
 
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if (taskCard.modelData.done)
-                                                Todo.markUnfinished(taskCard.modelData.originalIndex)
-                                            else
-                                                Todo.markDone(taskCard.modelData.originalIndex)
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        color: taskCard.fg
+                                        text: taskCard.modelData.content
+                                        elide: Text.ElideRight
+                                        maximumLineCount: 1
+                                        font.strikeout: taskCard.modelData.done
+                                    }
+
+                                    RippleButton {
+                                        id: deleteBtn
+                                        padding: 0
+                                        visible: taskCard.modelData.done
+                                        Layout.preferredWidth: 28
+                                        Layout.preferredHeight: 28
+                                        Layout.alignment: Qt.AlignVCenter
+                                        buttonRadius: 14
+                                        colBackground: "transparent"
+                                        colBackgroundHover: ColorUtils.transparentize(taskCard.fg, 0.8)
+                                        colRipple: ColorUtils.transparentize(taskCard.fg, 0.6)
+                                        onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
+
+                                        contentItem: MaterialSymbol {
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                            text: "delete"
+                                            iconSize: Appearance.font.pixelSize.normal
+                                            color: taskCard.fg
+                                        }
+
+                                        StyledToolTip {
+                                            text: Translation.tr("Delete task")
                                         }
                                     }
                                 }
-
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    color: taskCard.fg
-                                    text: taskCard.modelData.content
-                                    elide: Text.ElideRight
-                                    maximumLineCount: 1
-                                    font.strikeout: taskCard.modelData.done
-                                }
-
-                                RippleButton {
-                                    id: deleteBtn
-                                    padding: 0
-                                    visible: taskCard.modelData.done
-                                    Layout.preferredWidth: 28
-                                    Layout.preferredHeight: 28
-                                    Layout.alignment: Qt.AlignVCenter
-                                    buttonRadius: 14
-                                    colBackground: "transparent"
-                                    colBackgroundHover: ColorUtils.transparentize(taskCard.fg, 0.8)
-                                    colRipple: ColorUtils.transparentize(taskCard.fg, 0.6)
-                                    onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
-
-                                    contentItem: MaterialSymbol {
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                        text: "delete"
-                                        iconSize: Appearance.font.pixelSize.normal
-                                        color: taskCard.fg
-                                    }
-
-                                    StyledToolTip {
-                                        text: Translation.tr("Delete task")
-                                    }
-                                }
-                            }
-                        }
-
-                        swipe.right: Rectangle {
-                            width: 64
-                            anchors.right: parent.right
-                            height: parent.height
-                            radius: Appearance.rounding.normal
-                            color: Appearance.colors.colError
-
-                            MaterialSymbol {
-                                anchors.centerIn: parent
-                                text: "delete"
-                                iconSize: Appearance.font.pixelSize.larger
-                                color: Appearance.colors.colOnError
                             }
 
-                            SwipeDelegate.onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
+                            swipe.right: Rectangle {
+                                width: 64
+                                anchors.right: parent.right
+                                height: parent.height
+                                radius: Appearance.rounding.normal
+                                color: Appearance.colors.colError
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: "delete"
+                                    iconSize: Appearance.font.pixelSize.larger
+                                    color: Appearance.colors.colOnError
+                                }
+
+                                SwipeDelegate.onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
+                            }
                         }
                     }
                 }
