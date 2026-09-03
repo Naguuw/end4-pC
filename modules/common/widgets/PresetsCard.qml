@@ -17,6 +17,8 @@ Rectangle {
     property var onApply: () => {}
     property var onRemove: () => {}
     property var onRename: (newName) => {}
+    property var onOverwrite: () => {}
+    property var onExportZip: () => {}
     property bool isEditing: false
     property bool removeArmed: false
 
@@ -147,27 +149,62 @@ Rectangle {
                 }
             }
 
-            RippleButton {
-                id: editBtn
+            RowLayout {
                 visible: !root.isEditing
                 Layout.alignment: Qt.AlignRight
-                Layout.rightMargin: 12
-                implicitWidth: 32
-                implicitHeight: 32
-                buttonRadius: height / 2
-                colBackground: "transparent"
-                colBackgroundHover: Appearance.colors.colLayer2Hover
-                colRipple: Appearance.colors.colLayer2Active
-                
-                contentItem: MaterialSymbol {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    text: "edit"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colSubtext
+                Layout.rightMargin: 8
+                spacing: 2
+
+                RippleButton {
+                    id: editBtn
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    buttonRadius: height / 2
+                    colBackground: "transparent"
+                    colBackgroundHover: Appearance.colors.colLayer2Hover
+                    colRipple: Appearance.colors.colLayer2Active
+
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: "edit"
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colSubtext
+                    }
+                    onClicked: root.startEditing()
                 }
-                onClicked: root.startEditing()
+
+                Item {
+                    implicitWidth: 32
+                    implicitHeight: 32
+
+                    RippleButton {
+                        id: menuBtn
+                        anchors.centerIn: parent
+                        implicitWidth: 32
+                        implicitHeight: 32
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: "transparent"
+                        colBackgroundHover: Appearance.colors.colLayer2Hover
+                        colRipple: Appearance.colors.colLayer2Active
+                        onClicked: menuPopup.visible = !menuPopup.visible
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "more_vert"
+                            iconSize: Appearance.font.pixelSize.large
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+
+                    PresetPopup {
+                        id: menuPopup
+                        y: menuBtn.height + 4
+                        x: menuBtn.width - width + 8
+                        onOverwrite: root.onOverwrite
+                        onExportZip: root.onExportZip
+                    }
+                }
             }
 
             RowLayout {

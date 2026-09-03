@@ -206,127 +206,147 @@ Item {
                 }
             }
 
-            // ── Progress ──
-            RowLayout {
+            // ── Controls ──
+            ColumnLayout {
                 Layout.fillWidth: true
-                Layout.topMargin: 5
-                spacing: 12
+                Layout.topMargin: 20
+                spacing: 20
 
-                StyledText {
-                    font.pixelSize: Appearance.font.pixelSize.normal
-                    color: blendedColors.colSubtext
-                    font.letterSpacing: -0.4
-                    font.features: { "tnum": 1 }
-                    text: StringUtils.friendlyTimeForSeconds(root.player?.position ?? 0)
-                }
-
-                Item {
+                RowLayout {
                     Layout.fillWidth: true
-                    implicitHeight: Math.max(sliderLoader.implicitHeight, progressBarLoader.implicitHeight)
+                    spacing: 24
 
-                    Loader {
-                        id: sliderLoader
-                        anchors.fill: parent
-                        active: root.player?.canSeek ?? false  
-                        sourceComponent: StyledSlider {
-                            configuration: StyledSlider.Configuration.Wavy
-                            highlightColor: blendedColors.colPrimary
-                            trackColor: blendedColors.colSecondaryContainer
-                            handleColor: blendedColors.colPrimary
-                            value: (root.player?.position ?? 0) / (root.player?.length ?? 1)
-                            onMoved: {root.player.position = value * root.player.length
-                                lyricsComp.restartLyrics()
+                    RippleButton {
+                        property real baseSize: Math.max(70, parent.parent.height * 0.1)
+                        Layout.fillWidth: true
+                        implicitHeight: baseSize
+                        buttonRadius: (root.player?.isPlaying ?? false) ? Appearance.rounding.verylarge : baseSize / 2
+                        colBackground: (root.player?.isPlaying ?? false) ? blendedColors.colPrimary : blendedColors.colSecondaryContainer
+                        colBackgroundHover: (root.player?.isPlaying ?? false) ? blendedColors.colPrimaryHover : blendedColors.colSecondaryContainerHover
+                        colRipple: (root.player?.isPlaying ?? false) ? blendedColors.colPrimaryActive : blendedColors.colSecondaryContainerActive
+                        downAction: () => root.player?.togglePlaying()
+                        contentItem: MaterialSymbol {
+                            iconSize: 50
+                            fill: 1
+                            horizontalAlignment: Text.AlignHCenter
+                            color: (root.player?.isPlaying ?? false) ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer
+                            text: (root.player?.isPlaying ?? false) ? "pause" : "play_arrow"
+                            Behavior on color {
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                             }
                         }
                     }
 
-                    Loader {
-                        id: progressBarLoader
-                        anchors {
-                            verticalCenter: parent.verticalCenter
-                            left: parent.left
-                            right: parent.right
-                        }
-                        active: !(root.player?.canSeek ?? false)  
-                        sourceComponent: StyledProgressBar {
-                            wavy: root.player?.isPlaying ?? false  
-                            highlightColor: blendedColors.colPrimary
-                            trackColor: blendedColors.colSecondaryContainer
-                            value: (root.player?.position ?? 0) / (root.player?.length ?? 1)
+                    RippleButton {
+                        property real baseSize: Math.max(60, parent.parent.height * 0.06)
+                        implicitWidth: baseSize
+                        implicitHeight: baseSize 
+                        buttonRadius: Appearance.rounding.verylarge
+                        colBackground: "transparent"
+                        colBackgroundHover: "transparent"
+                        colRipple: "transparent"
+                        padding: -10
+                        downAction: () => root.player?.next()
+                        contentItem: MaterialShapeWrappedMaterialSymbol {
+                            wrappedShape: MaterialShape.Shape.Cookie12Sided
+                            padding: 0
+                            iconSize: 32
+                            fill: 1
+                            text: "skip_next"
+                            color: ColorUtils.transparentize(blendedColors.colSecondaryContainer, 0.7)
+                            colSymbol: blendedColors.colOnSecondaryContainer
                         }
                     }
                 }
 
-                StyledText {
-                    font.pixelSize: Appearance.font.pixelSize.normal 
-                    color: blendedColors.colSubtext
-                    font.letterSpacing: -0.4
-                    font.features: { "tnum": 1 }
-                    text: StringUtils.friendlyTimeForSeconds(root.player?.length ?? 0)
-                }
-            }
-
-            // ── Controls ──
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 20
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 15
-
-                RippleButton {
-                    property real baseSize: Math.max(42, parent.parent.height * 0.06)
-                    implicitWidth: baseSize * 1.5
-                    implicitHeight: baseSize * 1.5
-                    buttonRadius: Appearance.rounding.verylarge
-                    colBackground: ColorUtils.transparentize(blendedColors.colSecondaryContainer, 0.7)
-                    colBackgroundHover: blendedColors.colSecondaryContainerHover
-                    colRipple: blendedColors.colSecondaryContainerActive
-                    downAction: () => root.player?.previous()
-                    contentItem: MaterialSymbol {
-                        iconSize: 25
-                        fill: 1
-                        horizontalAlignment: Text.AlignHCenter
-                        color: blendedColors.colOnSecondaryContainer
-                        text: "skip_previous"
-                    }
-                }
-
-                RippleButton {
-                    property real baseSize: Math.max(70, parent.parent.height * 0.1)
+                RowLayout {
                     Layout.fillWidth: true
-                    implicitHeight: baseSize
-                    buttonRadius: (root.player?.isPlaying ?? false) ? Appearance.rounding.verylarge : baseSize / 2  
-                    colBackground: (root.player?.isPlaying ?? false) ? blendedColors.colPrimary : blendedColors.colSecondaryContainer
-                    colBackgroundHover: (root.player?.isPlaying ?? false) ? blendedColors.colPrimaryHover : blendedColors.colSecondaryContainerHover
-                    colRipple: (root.player?.isPlaying ?? false) ? blendedColors.colPrimaryActive : blendedColors.colSecondaryContainerActive
-                    downAction: () => root.player?.togglePlaying()  
-                    contentItem: MaterialSymbol {
-                        iconSize: 50
-                        fill: 1
-                        horizontalAlignment: Text.AlignHCenter
-                        color: (root.player?.isPlaying ?? false) ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer
-                        text: (root.player?.isPlaying ?? false) ? "pause" : "play_arrow"
-                        Behavior on color {
-                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    spacing: 24
+
+                    RippleButton {
+                        property real baseSize: Math.max(60, parent.parent.height * 0.06)
+                        implicitWidth: baseSize
+                        implicitHeight: baseSize 
+                        buttonRadius: Appearance.rounding.verylarge
+                        colBackground: "transparent"
+                        colBackgroundHover: "transparent"
+                        colRipple: "transparent"
+                        padding: -10
+                        downAction: () => root.player?.previous()
+                        contentItem: MaterialShapeWrappedMaterialSymbol {
+                            wrappedShape: MaterialShape.Shape.Cookie12Sided
+                            padding: 0
+                            iconSize: 32
+                            fill: 1
+                            text: "skip_previous"
+                            color: ColorUtils.transparentize(blendedColors.colSecondaryContainer, 0.7)
+                            colSymbol: blendedColors.colOnSecondaryContainer
                         }
                     }
-                }
 
-                RippleButton {
-                    property real baseSize: Math.max(42, parent.parent.height * 0.06)
-                    implicitWidth: baseSize * 1.5
-                    implicitHeight: baseSize * 1.5
-                    buttonRadius: Appearance.rounding.verylarge
-                    colBackground: ColorUtils.transparentize(blendedColors.colSecondaryContainer, 0.7)
-                    colBackgroundHover: blendedColors.colSecondaryContainerHover
-                    colRipple: blendedColors.colSecondaryContainerActive
-                    downAction: () => root.player?.next()
-                    contentItem: MaterialSymbol {
-                        iconSize: 25
-                        fill: 1
-                        horizontalAlignment: Text.AlignHCenter
-                        color: blendedColors.colOnSecondaryContainer
-                        text: "skip_next"
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: Math.max(sliderLoader.implicitHeight, progressBarLoader.implicitHeight)
+
+                            Loader {
+                                id: sliderLoader
+                                anchors.fill: parent
+                                active: root.player?.canSeek ?? false
+                                sourceComponent: StyledSlider {
+                                    configuration: StyledSlider.Configuration.Wavy
+                                    highlightColor: blendedColors.colPrimary
+                                    trackColor: blendedColors.colSecondaryContainer
+                                    handleColor: blendedColors.colPrimary
+                                    value: (root.player?.position ?? 0) / (root.player?.length ?? 1)
+                                    onMoved: {
+                                        root.player.position = value * root.player.length
+                                        lyricsComp.restartLyrics()
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: progressBarLoader
+                                anchors {
+                                    verticalCenter: parent.verticalCenter
+                                    left: parent.left
+                                    right: parent.right
+                                }
+                                active: !(root.player?.canSeek ?? false)
+                                sourceComponent: StyledProgressBar {
+                                    wavy: root.player?.isPlaying ?? false
+                                    highlightColor: blendedColors.colPrimary
+                                    trackColor: blendedColors.colSecondaryContainer
+                                    value: (root.player?.position ?? 0) / (root.player?.length ?? 1)
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            StyledText {
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                color: blendedColors.colSubtext
+                                font.letterSpacing: -0.4
+                                font.features: { "tnum": 1 }
+                                text: StringUtils.friendlyTimeForSeconds(root.player?.position ?? 0)
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            StyledText {
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                color: blendedColors.colSubtext
+                                font.letterSpacing: -0.4
+                                font.features: { "tnum": 1 }
+                                text: StringUtils.friendlyTimeForSeconds(root.player?.length ?? 0)
+                            }
+                        }
                     }
                 }
             }
@@ -334,7 +354,7 @@ Item {
             // ── Volume ──
             RowLayout {
                 Layout.fillWidth: true
-                Layout.topMargin: 10
+                Layout.topMargin: 20
                 spacing: 8
 
                 RippleButton {
