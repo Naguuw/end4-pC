@@ -12,6 +12,7 @@ Singleton {
     property string provider:   "wallhaven"  // "wallhaven" | "unsplash" | "pexels" | "blapples" | "naive"
     property string resolution: "1080p"      // "1080p" | "2K" | "4K"
     property string query:      ""           // empty keyword = random
+    property string colorGroup: ""           // naive: "" = all | "red"|"orange"|"yellow"|"green"|"blue"|"purple"
     property string category:   "general"    // wallhaven: "general"|"anime"|"people" / unsplash: "nature"|"city"|...
     property string purity:     "sfw"        // wallhaven: "sfw"|"sketchy"|"nsfw"
     property bool   loading:    false
@@ -282,9 +283,11 @@ Singleton {
             if (!Array.isArray(data)) throw new Error("Unexpected wallpapers.json response");
 
             const q = root.query.trim().toLowerCase();
+            const cg = root.colorGroup.trim().toLowerCase();
             const newItems = data
                 .filter(item => item && item.filename)
                 .filter(item => q.length === 0 || String(item.filename).toLowerCase().includes(q))
+                .filter(item => cg.length === 0 || ((item.color_groups ?? []).map(g => String(g).toLowerCase()).includes(cg)))
                 .map(item => {
                     const filename = String(item.filename);
                     const baseName = filename.replace(/\.[^.]+$/, "");
@@ -302,6 +305,8 @@ Singleton {
                         likes:            0,
                         width:            w,
                         height:           h,
+                        avgColor:         item.color ?? "",
+                        colorGroups:      item.color_groups ?? [],
                         downloadLocation: "",
                     };
                 });

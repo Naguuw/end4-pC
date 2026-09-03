@@ -18,6 +18,7 @@ MouseArea {
     property bool showControls: false
     property string source: "local"
     property string selectedResolution: "1080p"
+    property string selectedColorGroup: ""
     property bool toolbarVisible: showControls || Config.options.wallpaperSelector.showSearchbar
     property bool filterFieldFocused: false
 
@@ -325,6 +326,25 @@ MouseArea {
                         }
                     }
 
+                    Loader {
+                        active: root.source === "naive"
+                        visible: active
+                        anchors.centerIn: parent
+                        sourceComponent: CustomColorSelectionArray {
+                            currentValue: root.selectedColorGroup
+                            options: [
+                                    { value: "",       displayName: Translation.tr("All colors"), color: "transparent", rainbow: true },
+                                { value: "red",    displayName: Translation.tr("Red"),        color: "#E0483E" },
+                                { value: "orange", displayName: Translation.tr("Orange"),     color: "#E08A3E" },
+                                { value: "yellow", displayName: Translation.tr("Yellow"),     color: "#E0C93E" },
+                                { value: "green",  displayName: Translation.tr("Green"),      color: "#6CBF5C" },
+                                { value: "blue",   displayName: Translation.tr("Blue"),       color: "#4C7FE0" },
+                                { value: "purple", displayName: Translation.tr("Purple"),     color: "#8A5CE0" },
+                            ]
+                            onSelected: newValue => root.selectedColorGroup = newValue
+                        }
+                    }
+
                     RowLayout {
                         anchors {
                             right: parent.right
@@ -405,6 +425,7 @@ MouseArea {
                         OnlineWallpaperGrid {
                             provider: root.source
                             resolution: root.selectedResolution
+                            colorGroup: root.selectedColorGroup
                             onWallpaperSelected: path => root.selectWallpaperPath(path)
                             onUpdateThumbnailsRequested: root.updateThumbnails()
                         }
