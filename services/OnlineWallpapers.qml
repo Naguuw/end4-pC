@@ -9,7 +9,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    property string provider:   "wallhaven"  // "wallhaven" | "unsplash" | "pexels" | "blapples"
+    property string provider:   "wallhaven"  // "wallhaven" | "unsplash" | "pexels" | "blapples" | "naive"
     property string resolution: "1080p"      // "1080p" | "2K" | "4K"
     property string query:      ""           // empty keyword = random
     property string category:   "general"    // wallhaven: "general"|"anime"|"people" / unsplash: "nature"|"city"|...
@@ -34,6 +34,12 @@ Singleton {
     readonly property string blapplesPreviewProxy: "https://wsrv.nl/"
     readonly property int blapplesPreviewWidth: 960
     readonly property int blapplesPreviewQuality: 72
+
+    // ─── NA-ive ───
+    // JSON index from gh-pages, full files from main branch
+    readonly property string naiveJsonUrl: "https://raw.githubusercontent.com/na-ive/wallpapers/gh-pages/wallpapers.json"
+    readonly property string naivePagesBase: "https://raw.githubusercontent.com/na-ive/wallpapers/gh-pages/"
+    readonly property string naiveFullBase: "https://raw.githubusercontent.com/na-ive/wallpapers/main/"
 
     // ─── Resolution ───
     readonly property var resolutionMap: ({
@@ -94,6 +100,8 @@ Singleton {
             _fetchPexels();
         } else if (root.provider === "blapples") {
             _fetchBlapples();
+        } else if (root.provider === "naive") {
+            _fetchNaive();
         }
     }
 
@@ -140,6 +148,12 @@ Singleton {
     function _fetchBlapples() {
         fetchProc.provider = "blapples";
         fetchProc.command = ["curl", "-s", "-H", "Accept: application/vnd.github+json", root.blapplesRepo];
+        fetchProc.running = true;
+    }
+
+    function _fetchNaive() {
+        fetchProc.provider = "naive";
+        fetchProc.command = ["curl", "-sL", root.naiveJsonUrl];
         fetchProc.running = true;
     }
 
@@ -262,6 +276,44 @@ Singleton {
         }
     }
 
+    function _parseNaive(jsonStr) {
+        try {
+            const data = JSON.parse(jsonStr);
+            if (!Array.isArray(data)) throw new Error("Unexpected wallpapers.json response");
+
+            const q = root.query.trim().toLowerCase();
+            const newItems = data
+                .filter(item => item && item.filename)
+                .filter(item => q.length === 0 || String(item.filename).toLowerCase().includes(q))
+                .map(item => {
+                    const filename = String(item.filename);
+                    const baseName = filename.replace(/\.[^.]+$/, "");
+                    const dims = String(item.resolution ?? "").split("x");
+                    const w = parseInt(dims[0], 10) || 0;
+                    const h = parseInt(dims[1], 10) || 0;
+                    return {
+                        id:               baseName,
+                        thumb:            root.naivePagesBase + String(item.thumbnail ?? item.preview ?? filename),
+                        full:             root.naiveFullBase + encodeURIComponent(filename),
+                        provider:         "naive",
+                        title:            baseName.replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+                        author:           "",
+                        authorUrl:        "",
+                        likes:            0,
+                        width:            w,
+                        height:           h,
+                        downloadLocation: "",
+                    };
+                });
+
+            root.totalPages = 1;
+            root.results = root.appending ? root.results.concat(newItems) : newItems;
+            root.fetched();
+        } catch (e) {
+            root.fetchError("NA-ive parse error: " + e);
+        }
+    }
+
     // ─── Process ───
     Process {
         id: fetchProc
@@ -292,6 +344,8 @@ Singleton {
                 root._parsePexels(fetchProc.buffer);
             } else if (fetchProc.provider === "blapples") {
                 root._parseBlapples(fetchProc.buffer);
+            } else if (fetchProc.provider === "naive") {
+                root._parseNaive(fetchProc.buffer);
             }
         }
     }

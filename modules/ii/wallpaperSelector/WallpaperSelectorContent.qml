@@ -255,7 +255,7 @@ MouseArea {
 
                     Toolbar {
                         anchors.centerIn: parent
-                        visible: root.source !== "blapples"
+                        visible: root.source !== "blapples" && root.source !== "naive"
 
                         Loader {
                             active: root.source === "local"
@@ -297,7 +297,7 @@ MouseArea {
                         }
 
                         Loader {
-                            active: root.source !== "local" && root.source !== "blapples"
+                            active: root.source !== "local" && root.source !== "blapples" && root.source !== "naive"
                             visible: active
                             sourceComponent: RowLayout {
                                 spacing: 4
@@ -340,6 +340,7 @@ MouseArea {
                                 { value: "local",     displayName: Translation.tr("Local") },
                                 { value: "wallhaven", displayName: Translation.tr("Wallhaven") },
                                 { value: "blapples",  displayName: Translation.tr("Blapples") },
+                                { value: "naive",     displayName: Translation.tr("NA-ive") },
                                 { value: "unsplash",  displayName: Translation.tr("Unsplash") },
                                 { value: "pexels",    displayName: Translation.tr("Pexels") },
                             ]
