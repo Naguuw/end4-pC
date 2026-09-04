@@ -119,6 +119,10 @@ Item { // Wrapper
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 
+        MouseArea {
+            anchors.fill: parent
+        }
+
         ColumnLayout {
             id: columnLayout
             anchors {

@@ -23,19 +23,20 @@ Scope {
         visible: GlobalStates.overviewOpen
 
         WlrLayershell.namespace: "quickshell:overview"
-        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: GlobalStates.overviewOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
-
-        mask: Region {
-            item: GlobalStates.overviewOpen ? columnLayout : null
-        }
 
         anchors {
             top: true
             bottom: true
             left: true
             right: true
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: GlobalStates.overviewOpen = false
         }
 
         Connections {
@@ -99,6 +100,7 @@ Scope {
 
             Loader {
                 id: overviewLoader
+                anchors.horizontalCenter: parent.horizontalCenter
                 active: GlobalStates.overviewOpen && (Config?.options.overview.enable ?? true)
                 sourceComponent: (Config?.options.overview.style ?? "default") === "niri" ? niriComponent : defaultComponent
 

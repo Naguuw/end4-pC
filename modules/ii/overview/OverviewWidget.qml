@@ -82,6 +82,10 @@ Item {
         radius: root.largeWorkspaceRadius + padding
         color: Appearance.colors.colBackgroundSurfaceContainer
 
+        MouseArea {
+            anchors.fill: parent
+        }
+
         Column { // Workspaces
             id: workspaceColumnLayout
 
