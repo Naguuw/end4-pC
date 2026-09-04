@@ -720,6 +720,10 @@ Singleton {
                 property JsonObject media: JsonObject {
                     property bool enable: true
                     property bool artColors: false
+                    property string artShape: "Oval"
+                    property bool showLyrics: true
+                    property bool shapeArt: false
+                    property bool blurredBackground: false
                 }
                 
                 property JsonObject ai: JsonObject {
