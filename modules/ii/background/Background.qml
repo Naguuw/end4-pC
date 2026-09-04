@@ -269,6 +269,7 @@ Variants {
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
                 cache: true
+                mipmap: true
                 smooth: true
                 asynchronous: true
                 layer.enabled: true
@@ -281,6 +282,7 @@ Variants {
                 fillMode: Image.PreserveAspectCrop
                 cache: true
                 smooth: true
+                mipmap: true
                 asynchronous: true
                 layer.enabled: blurLoader.active
                 visible: !blurLoader.active && !bgRoot.centeredWallpaperEnabled && !bgRoot.videoRevealed
@@ -455,6 +457,7 @@ Variants {
                     source: bgRoot.wallpaperPath
                     fillMode: Image.PreserveAspectCrop
                     cache: false
+                    mipmap: true
                     antialiasing: true
                     sourceSize.width: parent.width
                     sourceSize.height: parent.height
