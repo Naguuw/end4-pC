@@ -249,8 +249,10 @@ Singleton {
             if (!Array.isArray(data)) throw new Error("Unexpected GitHub API response");
 
             const imageExt = /\.(png|jpe?g|webp|gif)$/i;
+            const q = root.query.trim().toLowerCase();
             const newItems = data
                 .filter(f => f.type === "file" && imageExt.test(f.name))
+                .filter(f => q.length === 0 || f.name.toLowerCase().includes(q))
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map(f => {
                     const baseName = f.name.replace(/\.[^.]+$/, "");
