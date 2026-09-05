@@ -239,7 +239,7 @@ Item {
                             ? Qt.rgba(
                                 Appearance.colors.colPrimary.r,
                                 Appearance.colors.colPrimary.g,
-                                Appearance.colors.colPrimary.b, 0.35)
+                                Appearance.colors.colPrimary.b, 0.15)
                             : "transparent"
                         border.width: delegateItem.index === grid.currentIndex ? 2 : 0
                         border.color: Appearance.colors.colPrimary

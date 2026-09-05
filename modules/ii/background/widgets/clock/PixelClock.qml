@@ -25,14 +25,14 @@ Item {
     readonly property color tintBold: Appearance.colors.colPrimary
 
     readonly property real fringeSize: isVertical ? root.width * 0.026 : root.height * 0.03
-    readonly property real tileW: isVertical ? root.width * 0.66 : root.width * 0.30
+    readonly property real tileW: isVertical ? root.width * 0.66 : root.width * 0.327
     readonly property real tileH: isVertical ? root.height * 0.66 : root.height * 0.9
     readonly property real glyphSize: isVertical ? root.height * 0.66 : root.height * 0.85
 
     readonly property real pos0X: isVertical ? root.width * 0.00 : root.width * 0.00
-    readonly property real pos1X: isVertical ? root.width * 0.30 : root.width * 0.15
-    readonly property real pos2X: isVertical ? root.width * 0.00 : root.width * 0.46
-    readonly property real pos3X: isVertical ? root.width * 0.30 : root.width * 0.60
+    readonly property real pos1X: isVertical ? root.width * 0.30 : root.width * 0.163
+    readonly property real pos2X: isVertical ? root.width * 0.00 : root.width * 0.50
+    readonly property real pos3X: isVertical ? root.width * 0.30 : root.width * 0.653
 
     readonly property real pos0Y: isVertical ? root.height * -0.04 : root.height * 0.05
     readonly property real pos1Y: isVertical ? root.height * -0.04 : root.height * 0.05
@@ -54,9 +54,12 @@ Item {
     readonly property var fringeSamples: ringSamples(16, fringeSize)
 
     StyledDropShadow {
-        id: glyphShadow
         target: glyphStage
-        visible: Config.options.background.widgets.enableShadows ?? false
+        color: Appearance.colors.colShadow
+        radius: 8
+        samples: 16
+        horizontalOffset: 4
+        verticalOffset: 4
     }
 
     Item {

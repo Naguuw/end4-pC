@@ -36,7 +36,7 @@ Item {
     property int currentPlayerIndex: 0
     property bool blurredBackground: Config.options.sidebar.media.blurredBackground ?? false
     property bool shapeArt: Config.options.sidebar.media.shapeArt ?? false
-    readonly property var artShapeOptions: ["Circle", "Square", "Pill", "Cookie12Sided", "Clover4Leaf", "Heart", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Triangle", "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Ghostish", "Clover8Leaf", "Burst", "SoftBurst", "Boom", "SoftBoom", "Flower", "Puffy", "PuffyDiamond"]
+    readonly property var artShapeOptions: ["Circle", "Square", "Pill", "Bun", "Cookie12Sided", "Clover4Leaf", "Heart", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Triangle", "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Ghostish", "Clover8Leaf", "Burst", "SoftBurst", "Boom", "SoftBoom", "Flower", "Puffy", "PuffyDiamond"]
 
     property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
 

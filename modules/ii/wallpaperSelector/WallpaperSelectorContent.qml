@@ -326,7 +326,7 @@ MouseArea {
                     }
 
                     Loader {
-                        active: root.source === "naive"
+                        active: root.source === "naive" || root.source === "blapples"
                         visible: active
                         anchors.centerIn: parent
                         sourceComponent: CustomColorSelectionArray {
