@@ -11,9 +11,9 @@ Singleton {
     signal reloaded()
 
     readonly property string configuratorScriptPath: Quickshell.shellPath("scripts/hyprland/hyprconfigurator.py")
-    readonly property string shellOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/main.lua`)
-    readonly property string animOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/animations.lua`)
-    readonly property string workspaceOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/workspaces.lua`)
+    readonly property string shellOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/shellOverrides/main.lua`)
+    readonly property string animOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/shellOverrides/animations.lua`)
+    readonly property string workspaceOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/shellOverrides/workspaces.lua`)
 
     function set(key: string, value: var) {
         Quickshell.execDetached([

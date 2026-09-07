@@ -61,7 +61,7 @@ is_image() {
     esac
 }
 
-VIDEO_THUMBNAIL_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/custom/scripts/mpvpaper_thumbnails"
+VIDEO_THUMBNAIL_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/wallpapers/thumbnails"
 
 generate_thumbnail() {
     local src="$1"

@@ -522,7 +522,7 @@ ContentPage {
             NoticeBox {
                 Layout.fillWidth: true
                 Layout.topMargin: 15
-                text: Translation.tr("Animation presets require a require line in your hyprland.lua. Add the following line to enable presets:") + '\n\nrequire("hyprland/shellOverrides/animations")'
+                text: Translation.tr("Animation presets require a require line in your hyprland.lua. Add the following line to enable presets:") + '\n\nrequire("shellOverrides/animations")'
 
                 Item { Layout.fillWidth: true }
 
@@ -535,7 +535,7 @@ ContentPage {
                     mainText: justCopied ? Translation.tr("Copied!") : Translation.tr("Copy line")
                     onClicked: {
                         copySourceButton.justCopied = true
-                        Quickshell.clipboardText = 'require("hyprland/shellOverrides/animations")'
+                        Quickshell.clipboardText = 'require("shellOverrides/animations")'
                         revertSourceTimer.restart()
                     }
                     colBackground: ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
