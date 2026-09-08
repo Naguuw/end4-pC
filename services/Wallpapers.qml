@@ -37,7 +37,7 @@ Singleton {
     function thumbnailFor(path) {
         if (!isVideo(path)) return path;
         const basename = path.substring(path.lastIndexOf("/") + 1);
-        return `${Directories.config}/hypr/custom/scripts/mpvpaper_thumbnails/${basename}.jpg`;
+        return `${Directories.config}/hypr/scripts/wallpapers/thumbnails/${basename}.jpg`;
     }
     property list<string> wallpapers: [] // List of absolute file paths (without file://)
     readonly property bool thumbnailGenerationRunning: thumbgenProc.running

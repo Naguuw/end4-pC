@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 HIDE_MARKERS = ["[hidden]", "# [hidden]"]
 
 parser = argparse.ArgumentParser(description='Hyprland Lua keybind reader')
-parser.add_argument('--path', type=str, default="$HOME/.config/hypr/hyprland/keybinds.lua")
+parser.add_argument('--path', type=str, default="$HOME/.config/hypr/keybinds.lua")
 args = parser.parse_args()
 
 content_lines = []

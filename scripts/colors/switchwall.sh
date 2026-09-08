@@ -112,10 +112,10 @@ check_and_prompt_upscale() {
     fi
 }
 
-CUSTOM_DIR="$XDG_CONFIG_HOME/hypr/custom"
-RESTORE_SCRIPT_DIR="$CUSTOM_DIR/scripts"
-RESTORE_SCRIPT="$RESTORE_SCRIPT_DIR/__restore_video_wallpaper.sh"
-THUMBNAIL_DIR="$RESTORE_SCRIPT_DIR/mpvpaper_thumbnails"
+CUSTOM_DIR="$XDG_CONFIG_HOME/hypr/scripts/wallpapers"
+RESTORE_SCRIPT_DIR="$CUSTOM_DIR"
+RESTORE_SCRIPT="$RESTORE_SCRIPT_DIR/restore_video_wallpaper.sh"
+THUMBNAIL_DIR="$CUSTOM_DIR/thumbnails"
 VIDEO_OPTS="no-audio loop hwdec=auto scale=bilinear interpolation=no video-sync=display-resample panscan=1.0 video-scale-x=1.0 video-scale-y=1.0 video-align-x=0.5 video-align-y=0.5 load-scripts=no"
 
 is_video() {

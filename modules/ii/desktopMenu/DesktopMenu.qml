@@ -35,7 +35,7 @@ Scope {
         if (!path) return path
         const basename = path.substring(path.lastIndexOf("/") + 1)
         return new RegExp(videoExtensions, "i").test(path)
-            ? `${Directories.config}/hypr/custom/scripts/mpvpaper_thumbnails/${basename}.jpg`
+            ? `${Directories.config}/hypr/scripts/wallpapers/thumbnails/${basename}.jpg`
             : path
     }
 
