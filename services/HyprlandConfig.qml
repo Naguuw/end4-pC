@@ -23,10 +23,17 @@ Singleton {
         ])
     }
 
-    function setMany(entries: var) {
+    function setMany(entries: var, resetKeys: var) {
         let args = ["python3", root.configuratorScriptPath, "--file", root.shellOverridesPath]
-        for (let key in entries) {
-            args.push("--set", key, String(entries[key]))
+        if (entries) {
+            for (let key in entries) {
+                args.push("--set", key, String(entries[key]))
+            }
+        }
+        if (resetKeys && resetKeys.length) {
+            for (let i = 0; i < resetKeys.length; i++) {
+                args.push("--reset", resetKeys[i])
+            }
         }
         Quickshell.execDetached(args)
     }
