@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common
 import qs.modules.common.functions as CF
 
 ApiStrategy {
@@ -268,13 +269,21 @@ ApiStrategy {
             const trimmedFilePath = CF.FileUtils.trimFileProtocol(paths[i]);
             const mimeVar = `${fileMimeTypeVarName}${i}`;
             const uriVar = `${fileUriVarName}${i}`;
+            const readScriptPath = CF.FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/read-file.py`);
 
             content += `IMAGE_PATH_${i}='${CF.StringUtils.shellSingleQuoteEscape(trimmedFilePath)}'\n`;
+            content += `UPLOAD_FILE_${i}="$IMAGE_PATH_${i}"\n`;
             content += `${mimeVar}=$(file -b --mime-type "$IMAGE_PATH_${i}")\n`;
-            content += `if [[ "$${mimeVar}" == text/* ]] || [[ "$${mimeVar}" == inode/x-empty ]] || [[ "$${mimeVar}" == application/x-shellscript ]]; then\n`;
+            content += `if [[ "$${mimeVar}" == text/* ]] || [[ "$${mimeVar}" == inode/x-empty ]] || [[ "$${mimeVar}" == application/x-shellscript ]] || [[ "$IMAGE_PATH_${i}" == *.ipynb ]] || [[ "$IMAGE_PATH_${i}" == *.pdf ]] || [[ "$IMAGE_PATH_${i}" == *.json ]] || [[ "$IMAGE_PATH_${i}" == *.csv ]]; then\n`;
             content += `    ${mimeVar}="text/plain"\n`;
+            content += `    tmp_processed_${i}=$(mktemp)\n`;
+            content += `    if python3 '${readScriptPath}' "$IMAGE_PATH_${i}" > "$tmp_processed_${i}" 2>/dev/null && [[ -s "$tmp_processed_${i}" ]]; then\n`;
+            content += `        UPLOAD_FILE_${i}="$tmp_processed_${i}"\n`;
+            content += `    else\n`;
+            content += `        rm -f "$tmp_processed_${i}"\n`;
+            content += `    fi\n`;
             content += `fi\n`;
-            content += `NUM_BYTES_${i}=$(wc -c < "$IMAGE_PATH_${i}")\n`;
+            content += `NUM_BYTES_${i}=$(wc -c < "$UPLOAD_FILE_${i}")\n`;
             content += `tmp_header_file_${i}=$(mktemp)\n`;
             content += `tmp_file_info_file_${i}=$(mktemp)\n`;
 
@@ -286,7 +295,7 @@ ApiStrategy {
                 + ` -H "X-Goog-Upload-Header-Content-Length: \${NUM_BYTES_${i}}"`
                 + ` -H "X-Goog-Upload-Header-Content-Type: \${${mimeVar}}"`
                 + ' -H "Content-Type: application/json"'
-                + ` -d "{'file': {'display_name': 'Image'}}" 2> /dev/null`
+                + ` -d "{'file': {'display_name': 'Attachment'}}" 2> /dev/null`
                 + '\n';
 
             content += `upload_url_${i}=$(grep -i "x-goog-upload-url: " "\${tmp_header_file_${i}}" | cut -d" " -f2 | tr -d "\r")\n`;
@@ -297,8 +306,9 @@ ApiStrategy {
                 + ` -H "Content-Length: \${NUM_BYTES_${i}}"`
                 + ' -H "X-Goog-Upload-Offset: 0"'
                 + ' -H "X-Goog-Upload-Command: upload, finalize"'
-                + ` --data-binary "@$IMAGE_PATH_${i}" 2> /dev/null > "\${tmp_file_info_file_${i}}"\n`;
+                + ` --data-binary "@$UPLOAD_FILE_${i}" 2> /dev/null > "\${tmp_file_info_file_${i}}"\n`;
 
+            content += `rm -f "\${tmp_processed_${i}:-}"\n`;
             content += `${uriVar}=$(jq -r ".file.uri" "$tmp_file_info_file_${i}")\n`
             content += `rm -f "\${tmp_file_info_file_${i}}"\n`;
             content += `printf "{\\"uploadedFile\\": {\\"uri\\": \\"$${uriVar}\\", \\"mimeType\\": \\"$${mimeVar}\\", \\"localPath\\": \\"$IMAGE_PATH_${i}\\", \\"index\\": ${i}}}\\n,\\n"\n`

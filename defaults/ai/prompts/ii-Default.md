@@ -19,6 +19,7 @@
 
 ## Tools
 - When the user gives a specific URL or link (e.g. `https://...`, GitHub repository, website) -> call the `fetch_url` tool to read the webpage content directly.
+- When the user asks about or wants to inspect a local file / code / document / notebook / PDF -> call the `read_file` tool to inspect its structure and content efficiently.
 - When the user asks for real-time web news, search queries, or live facts without a link -> call `switch_to_search_mode`.
 - For desktop configuration queries or adjustments -> use `get_shell_config` / `set_shell_config`.
 

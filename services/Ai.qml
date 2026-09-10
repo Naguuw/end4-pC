@@ -156,6 +156,24 @@ Singleton {
                 "required": ["url"]
             }
         },
+        {
+            "name": "read_file",
+            "description": "Read a local file intelligently. Instead of dumping raw content, this extracts a structural skeleton (function signatures, class outlines, key variables, docstrings) to save tokens. Works with Python, JS/TS, Shell, QML, JSON, and other text files. Use this when the user shares a file path or asks you to look at a local file.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute or relative path to the file to read."
+                    },
+                    "full": {
+                        "type": "boolean",
+                        "description": "If true, return raw file content instead of skeleton (still truncated). Use only when the user explicitly asks for the full/raw content."
+                    }
+                },
+                "required": ["path"]
+            }
+        },
     ]
     readonly property var compatFunctionDeclarations: root.functionDeclarations.filter(declaration => declaration.name !== "switch_to_search_mode")
 
@@ -233,6 +251,19 @@ Singleton {
             "homepage": "https://aistudio.google.com",
             "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:streamGenerateContent",
             "model": "gemma-4-31b-it",
+            "requires_key": true,
+            "key_id": "gemini",
+            "key_get_link": "https://aistudio.google.com/app/apikey",
+            "key_get_description": Translation.tr("**Pricing**: free. Data used for training.\n\n**Instructions**: Log into Google account, allow AI Studio to create Google Cloud project or whatever it asks, go back and click Get API key"),
+            "api_format": "gemini",
+        }),
+        "gemma-4-26b-a4b-it": aiModelComponent.createObject(this, {
+            "name": "Gemma-4-26B-A4B-IT",
+            "icon": "google-gemini-symbolic",
+            "description": Translation.tr("Online | Google's model LLM."),
+            "homepage": "https://aistudio.google.com",
+            "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:streamGenerateContent",
+            "model": "gemma-4-26b-a4b-it",
             "requires_key": true,
             "key_id": "gemini",
             "key_get_link": "https://aistudio.google.com/app/apikey",
@@ -944,7 +975,7 @@ Singleton {
         command: ["python3", `${Directories.scriptPath}/ai/fetch-url.py`.replace(/file:\/\//, ""), targetUrl]
         stdout: SplitParser {
             onRead: (output) => {
-                if (urlFetchProc.fetchedOutput.length < 3000) {
+                if (urlFetchProc.fetchedOutput.length < 30000) {
                     urlFetchProc.fetchedOutput += output + "\n";
                 }
             }
@@ -952,6 +983,26 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             const result = urlFetchProc.fetchedOutput.trim();
             addFunctionOutputMessage("fetch_url", result.length > 0 ? result : Translation.tr("No content returned from URL."));
+            requester.makeRequest();
+        }
+    }
+
+    Process {
+        id: readFileProc
+        property string targetPath: ""
+        property bool fullMode: false
+        property string fetchedOutput: ""
+        command: ["python3", `${Directories.scriptPath}/ai/read-file.py`.replace(/file:\/\//, ""), targetPath, ...(fullMode ? ["--full"] : [])]
+        stdout: SplitParser {
+            onRead: (output) => {
+                if (readFileProc.fetchedOutput.length < 50000) {
+                    readFileProc.fetchedOutput += output + "\n";
+                }
+            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            const result = readFileProc.fetchedOutput.trim();
+            addFunctionOutputMessage("read_file", result.length > 0 ? result : Translation.tr("Could not read file."));
             requester.makeRequest();
         }
     }
@@ -970,6 +1021,15 @@ Singleton {
             urlFetchProc.targetUrl = args.url.trim();
             urlFetchProc.fetchedOutput = "";
             urlFetchProc.running = true;
+        } else if (name === "read_file") {
+            if (!args.path || args.path.length === 0) {
+                addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `path`."));
+                return;
+            }
+            readFileProc.targetPath = args.path.trim();
+            readFileProc.fullMode = args.full === true;
+            readFileProc.fetchedOutput = "";
+            readFileProc.running = true;
         } else if (name === "get_shell_config") {
             const rawOptions = CF.ObjectUtils.toPlainObject(Config.options);
             let resultData;
