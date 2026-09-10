@@ -62,6 +62,16 @@ Singleton {
         ])
     }
 
+    function applyFromConfig() {
+        Quickshell.execDetached([
+            "python3", root.configuratorScriptPath,
+            "--apply-config", FileUtils.trimFileProtocol(Directories.shellConfigPath),
+            "--file", root.shellOverridesPath,
+            "--anim-file", root.animOverridesPath,
+            "--workspace-file", root.workspaceOverridesPath
+        ])
+    }
+
     Connections {
         target: Hyprland
         function onRawEvent(event) {

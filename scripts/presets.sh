@@ -152,6 +152,12 @@ case "$action" in
             || { rm -f "$tmp"; die "Failed to apply preset '$name'"; }
         rm -f "$tmp"
         "$SWITCHWALL" --noswitch || true
+
+        # Apply Hyprland configuration from config.json if on Hyprland
+        if [ "$XDG_CURRENT_DESKTOP" = "Hyprland" ] || [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+            python3 "$SCRIPT_DIR/hyprland/hyprconfigurator.py" --apply-config "$CONFIG_FILE" || true
+            hyprctl reload || true
+        fi
         ;;
     --rename|--edit)
         new_name="${args[1]}"

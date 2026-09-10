@@ -125,6 +125,7 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             Config.reloadFile();
             Config.blockWrites = false;
+            HyprlandConfig.applyFromConfig();
         }
     }
 
@@ -175,17 +176,27 @@ Singleton {
     }
 
     function applyOnline(name) {
+        const clean = sanitizeName(name);
+        if (clean.length === 0 || applyProc.running) return;
         GlobalStates.settingsOpen = false;
         Wallpapers.confirmedPath = "";
         Wallpapers.previewPath = "";
-        Quickshell.execDetached(["bash", Directories.presetsScriptPath, "--apply", name, "--online"]);
+        Config.flush();
+        Config.blockWrites = true;
+        applyProc.command = ["bash", Directories.presetsScriptPath, "--apply", clean, "--online"];
+        applyProc.running = true;
     }
 
     function applyImported(name, wallpaperPath) {
+        const clean = sanitizeName(name);
+        if (clean.length === 0 || applyProc.running) return;
         GlobalStates.settingsOpen = false;
         Wallpapers.confirmedPath = wallpaperPath ?? "";
         Wallpapers.previewPath = "";
-        Quickshell.execDetached(["bash", Directories.presetsScriptPath, "--apply", name, "--imported"]);
+        Config.flush();
+        Config.blockWrites = true;
+        applyProc.command = ["bash", Directories.presetsScriptPath, "--apply", clean, "--imported"];
+        applyProc.running = true;
     }
 
     function remove(name) {

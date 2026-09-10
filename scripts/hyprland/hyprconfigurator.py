@@ -1,5 +1,6 @@
 #!/usr/bin/env -S /bin/sh -c "source $(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate&&exec python -E \"$0\" \"$@\""
 import argparse
+import json
 import os
 import re
 import tempfile
@@ -196,21 +197,114 @@ def save_preset(anim_file, preset_name):
     print(f"Wrote preset '{preset_name}' -> {anim_file}")
 
 
+def apply_config(config_path, main_file, anim_file, workspace_file):
+    config_path = os.path.expanduser(config_path)
+    if not os.path.exists(config_path):
+        print(f"Config file not found: {config_path}")
+        return
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"Failed to read config JSON: {e}")
+        return
+
+    hypr = data.get("hyprland", {})
+    if not hypr:
+        print("No hyprland section in config")
+        return
+
+    set_pairs = []
+
+    dec = hypr.get("decoration", {})
+    if "rounding" in dec and dec["rounding"] is not None:
+        set_pairs.append(("decoration:rounding", str(dec["rounding"])))
+    if "activeOpacity" in dec and dec["activeOpacity"] is not None:
+        set_pairs.append(("decoration:active_opacity", str(dec["activeOpacity"])))
+    if "inactiveOpacity" in dec and dec["inactiveOpacity"] is not None:
+        set_pairs.append(("decoration:inactive_opacity", str(dec["inactiveOpacity"])))
+
+    blur = dec.get("blur", {})
+    if "enabled" in blur and blur["enabled"] is not None:
+        set_pairs.append(("decoration:blur:enabled", "1" if blur["enabled"] else "0"))
+    if "size" in blur and blur["size"] is not None:
+        set_pairs.append(("decoration:blur:size", str(blur["size"])))
+    if "passes" in blur and blur["passes"] is not None:
+        set_pairs.append(("decoration:blur:passes", str(blur["passes"])))
+
+    shadow = dec.get("shadow", {})
+    if "enabled" in shadow and shadow["enabled"] is not None:
+        set_pairs.append(("decoration:shadow:enabled", "1" if shadow["enabled"] else "0"))
+
+    gen = hypr.get("general", {})
+    if "borderSize" in gen and gen["borderSize"] is not None:
+        set_pairs.append(("general:border_size", str(gen["borderSize"])))
+    if "gapsIn" in gen and gen["gapsIn"] is not None:
+        set_pairs.append(("general:gaps_in", str(gen["gapsIn"])))
+    if "gapsOut" in gen and gen["gapsOut"] is not None:
+        set_pairs.append(("general:gaps_out", str(gen["gapsOut"])))
+    if "layout" in gen and gen["layout"] is not None:
+        set_pairs.append(("general:layout", str(gen["layout"])))
+
+    anim = hypr.get("animations", {})
+    if "enable" in anim and anim["enable"] is not None:
+        set_pairs.append(("animations:enabled", "1" if anim["enable"] else "0"))
+
+    inp = hypr.get("input", {})
+    if "kbLayout" in inp and inp["kbLayout"] is not None:
+        set_pairs.append(("input:kb_layout", str(inp["kbLayout"])))
+    if "numlock" in inp and inp["numlock"] is not None:
+        set_pairs.append(("input:numlock_by_default", "1" if inp["numlock"] else "0"))
+    if "repeatDelay" in inp and inp["repeatDelay"] is not None:
+        set_pairs.append(("input:repeat_delay", str(inp["repeatDelay"])))
+    if "repeatRate" in inp and inp["repeatRate"] is not None:
+        set_pairs.append(("input:repeat_rate", str(inp["repeatRate"])))
+    if "followMouse" in inp and inp["followMouse"] is not None:
+        set_pairs.append(("input:follow_mouse", str(inp["followMouse"])))
+
+    touchpad = inp.get("touchpad", {})
+    if "naturalScroll" in touchpad and touchpad["naturalScroll"] is not None:
+        set_pairs.append(("input:touchpad:natural_scroll", "1" if touchpad["naturalScroll"] else "0"))
+    if "disableWhileTyping" in touchpad and touchpad["disableWhileTyping"] is not None:
+        set_pairs.append(("input:touchpad:disable_while_typing", "1" if touchpad["disableWhileTyping"] else "0"))
+    if "clickfingerBehavior" in touchpad and touchpad["clickfingerBehavior"] is not None:
+        set_pairs.append(("input:touchpad:clickfinger_behavior", "1" if touchpad["clickfingerBehavior"] else "0"))
+    if "scrollFactor" in touchpad and touchpad["scrollFactor"] is not None:
+        set_pairs.append(("input:touchpad:scroll_factor", str(touchpad["scrollFactor"])))
+
+    if set_pairs:
+        edit_lua(os.path.expanduser(main_file), set_pairs, [])
+
+    anim_preset = anim.get("animation")
+    if anim_preset:
+        save_preset(os.path.expanduser(anim_file), anim_preset)
+
+    special_layout = gen.get("specialLayout")
+    if special_layout:
+        edit_workspace_layout(os.path.expanduser(workspace_file), "special:special", special_layout)
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--file", default="~/.config/hypr/shellOverrides/main.lua")
     p.add_argument("--set", nargs=2, action="append", metavar=("KEY", "VALUE"))
     p.add_argument("--reset", action="append", metavar="KEY")
     p.add_argument("--workspace-layout", nargs=2, metavar=("WORKSPACE", "LAYOUT"))
+    p.add_argument("--workspace-file", default="~/.config/hypr/shellOverrides/workspaces.lua")
     p.add_argument("--anim-preset", metavar="PRESET")
     p.add_argument("--anim-file", default="~/.config/hypr/shellOverrides/animations.lua")
+    p.add_argument("--apply-config", metavar="CONFIG_JSON")
     args = p.parse_args()
+
+    if args.apply_config:
+        apply_config(args.apply_config, args.file, args.anim_file, args.workspace_file)
 
     if args.anim_preset:
         save_preset(os.path.expanduser(args.anim_file), args.anim_preset)
 
     if args.workspace_layout:
-        edit_workspace_layout(os.path.expanduser(args.file), *args.workspace_layout)
+        edit_workspace_layout(os.path.expanduser(args.workspace_file), *args.workspace_layout)
 
     raw_sets   = args.set or []
     reset_keys = args.reset or []
@@ -223,5 +317,5 @@ if __name__ == "__main__":
 
     if set_pairs or reset_keys:
         edit_lua(os.path.expanduser(args.file), set_pairs, reset_keys)
-    elif not args.anim_preset and not args.workspace_layout:
-        print("Error: specify --set, --reset, --anim-preset, or --workspace-layout")
+    elif not args.apply_config and not args.anim_preset and not args.workspace_layout:
+        print("Error: specify --apply-config, --set, --reset, --anim-preset, or --workspace-layout")
