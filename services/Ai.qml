@@ -175,7 +175,11 @@ Singleton {
             }
         },
     ]
-    readonly property var compatFunctionDeclarations: root.functionDeclarations.filter(declaration => declaration.name !== "switch_to_search_mode")
+    property var functionDeclarationsByFormat: {
+        "gemini": root.functionDeclarations,
+        "openai": root.functionDeclarations.filter(declaration => declaration.name !== "switch_to_search_mode"),
+        "mistral": root.functionDeclarations.filter(declaration => declaration.name !== "switch_to_search_mode"),
+    }
 
     function toOpenAiTool(declaration): var {
         return { "type": "function", "function": declaration };
@@ -183,22 +187,22 @@ Singleton {
 
     property var tools: {
         "gemini": {
-            "functions": [{ "functionDeclarations": root.functionDeclarations }],
+            "functions": [{ "functionDeclarations": root.functionDeclarationsByFormat.gemini }],
             "search": [{ "google_search": {} }],
             "none": [],
         },
         "openai": {
-            "functions": root.compatFunctionDeclarations.map(root.toOpenAiTool),
+            "functions": root.functionDeclarationsByFormat.openai.map(root.toOpenAiTool),
             "search": [],
             "none": [],
         },
         "mistral": {
-            "functions": root.compatFunctionDeclarations.map(root.toOpenAiTool),
+            "functions": root.functionDeclarationsByFormat.mistral.map(root.toOpenAiTool),
             "search": [],
             "none": [],
         },
     }
-    property list<var> availableTools: Object.keys(root.tools[models[currentModelId]?.api_format])
+    property list<var> availableTools: Object.keys(root.tools[models[currentModelId]?.api_format] ?? {})
     property var toolDescriptions: {
         "functions": Translation.tr("Commands, edit configs, search.\nTakes an extra turn to switch to search mode if that's needed"),
         "search": Translation.tr("Gives the model search capabilities (immediately)"),
@@ -605,7 +609,7 @@ Singleton {
         property ApiStrategy currentStrategy
         property bool stoppedByUser: false
         property int errorRetryCount: 0
-        readonly property int maxErrorRetries: 2
+        readonly property int maxErrorRetries: 4
 
         function hasRetriableError(): bool {
             const content = message?.content ?? "";
@@ -879,7 +883,7 @@ Singleton {
             "rawContent": `Output of ${name} ${includeOutputInChat ? ("\n\n<think>\n" + output + "\n</think>") : ""}`,
             "functionName": name,
             "functionResponse": output,
-            "thinking": false,
+            "thinking": true,
             "done": true,
             "visibleToUser": false,
         });
