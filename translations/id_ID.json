@@ -488,5 +488,10 @@
   "Colors": "Warna",
   "Monitors": "Monitor",
   "Fuzzy": "Fuzzy",
-  "Discord": "Discord"
+  "Discord": "Discord",
+  "Wallpaper position": "Posisi wallpaper",
+  "Adjust wallpaper alignment and scale when aspect ratio differs from screen": "Sesuaikan posisi dan perbesaran wallpaper saat rasio aspek berbeda dengan layar",
+  "Horizontal position": "Horizontal",
+  "Vertical position": "Vertikal",
+  "Scale": "Skala"
 }

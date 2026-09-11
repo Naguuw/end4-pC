@@ -43,6 +43,33 @@ ContentPage {
             : path
     }
 
+    Component {
+        id: carouselWallpaperDelegate
+        Item {
+            anchors.fill: parent
+            clip: true
+
+            StyledImage {
+                id: carouselImg
+                source: "file://" + FileUtils.trimFileProtocol(modelData)
+                fillMode: Image.Stretch
+                cache: true
+                asynchronous: true
+
+                readonly property real baseScale: {
+                    if (sourceSize.width <= 0 || sourceSize.height <= 0 || parent.width <= 0 || parent.height <= 0) return 1.0;
+                    return Math.max(parent.width / sourceSize.width, parent.height / sourceSize.height) * (Config.options.background.wallpaperScale ?? 1.0);
+                }
+
+                width: sourceSize.width > 0 ? Math.ceil(sourceSize.width * baseScale) : parent.width
+                height: sourceSize.height > 0 ? Math.ceil(sourceSize.height * baseScale) : parent.height
+
+                x: Math.round((parent.width - width) * (Config.options.background.wallpaperOffsetX ?? 0.5))
+                y: Math.round((parent.height - height) * (Config.options.background.wallpaperOffsetY ?? 0.5))
+            }
+        }
+    }
+
     ColumnLayout {
         id: mainLayout 
         Layout.fillWidth: true   
@@ -76,6 +103,7 @@ ContentPage {
                         largeItemWidthRatio: 0.5
                         mediumItemWidthRatio: 0.485
                         itemSpacing: 8
+                        delegate: carouselWallpaperDelegate
                         model: [
                             page.displayPathFor(Config.options.background.wallpaperPath),
                             page.displayPathFor(
@@ -167,6 +195,7 @@ ContentPage {
                         largeItemWidthRatio: 1
                         mediumItemWidthRatio: 0
                         itemSpacing: 8
+                        delegate: carouselWallpaperDelegate
                         model: [page.displayPathFor(Config.options.background.wallpaperPath)]
                         wheelEnabled: false
                         dragEnabled: false
@@ -302,11 +331,70 @@ ContentPage {
                     }
                 }
             }
+        
+            ContentSubsection {
+                title: Translation.tr("Wallpaper position")
+                tooltip: Translation.tr("Adjust wallpaper alignment and scale when aspect ratio differs from screen")
+                Layout.fillWidth: true
+
+                GroupedList {
+                    ConfigSlider {
+                        id: hPosSlider
+                        buttonIcon: "align_horizontal_center"
+                        text: Translation.tr("Horizontal")
+                        value: Math.round((Config.options.background.wallpaperOffsetX ?? 0.5) * 100)
+                        from: 0
+                        to: 100
+                        stopIndicatorValues: [50]
+                        usePercentTooltip: true
+                        onValueChanged: {
+                            Config.options.background.wallpaperOffsetX = value / 100;
+                        }
+                    }
+
+                    ConfigSlider {
+                        id: vPosSlider
+                        buttonIcon: "align_vertical_center"
+                        text: Translation.tr("Vertical")
+                        value: Math.round((Config.options.background.wallpaperOffsetY ?? 0.5) * 100)
+                        from: 0
+                        to: 100
+                        stopIndicatorValues: [50]
+                        usePercentTooltip: true
+                        onValueChanged: {
+                            Config.options.background.wallpaperOffsetY = value / 100;
+                        }
+                    }
+
+                    ConfigSlider {
+                        id: scalePosSlider
+                        buttonIcon: "zoom_in"
+                        text: Translation.tr("Scale")
+                        value: Math.round((Config.options.background.wallpaperScale ?? 1.0) * 100)
+                        from: 100
+                        to: 200
+                        stopIndicatorValues: [100]
+                        usePercentTooltip: true
+                        onValueChanged: {
+                            Config.options.background.wallpaperScale = value / 100;
+                        }
+                    }
+                }
+            }
 
             Connections {
                 target: Config.options.background
                 function onLockWallChanged() {
                     syncWallpaperSwitch.checked = Qt.binding(() => Config.options.background.lockWall === "")
+                }
+                function onWallpaperOffsetXChanged() {
+                    hPosSlider.value = Math.round((Config.options.background.wallpaperOffsetX ?? 0.5) * 100);
+                }
+                function onWallpaperOffsetYChanged() {
+                    vPosSlider.value = Math.round((Config.options.background.wallpaperOffsetY ?? 0.5) * 100);
+                }
+                function onWallpaperScaleChanged() {
+                    scalePosSlider.value = Math.round((Config.options.background.wallpaperScale ?? 1.0) * 100);
                 }
             }
         

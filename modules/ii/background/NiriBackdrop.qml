@@ -39,15 +39,30 @@ Variants {
                 right: true
             }
 
-            Image {
+            Item {
                 id: sourceImage
                 anchors.fill: parent
-                source: backdrop.wallpaperPath
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                cache: true
-                smooth: true
+                clip: true
                 visible: false
+                layer.enabled: true
+
+                Image {
+                    source: backdrop.wallpaperPath
+                    fillMode: Image.Stretch
+                    asynchronous: true
+                    cache: true
+                    smooth: true
+
+                    readonly property real baseScale: {
+                        if (sourceSize.width <= 0 || sourceSize.height <= 0 || sourceImage.width <= 0 || sourceImage.height <= 0) return 1.0;
+                        return Math.max(sourceImage.width / sourceSize.width, sourceImage.height / sourceSize.height) * (Config.options.background.wallpaperScale ?? 1.0);
+                    }
+                    width: sourceSize.width > 0 ? Math.ceil(sourceSize.width * baseScale) : sourceImage.width
+                    height: sourceSize.height > 0 ? Math.ceil(sourceSize.height * baseScale) : sourceImage.height
+
+                    x: Math.round((sourceImage.width - width) * (Config.options.background.wallpaperOffsetX ?? 0.5))
+                    y: Math.round((sourceImage.height - height) * (Config.options.background.wallpaperOffsetY ?? 0.5))
+                }
             }
 
             FastBlur {
