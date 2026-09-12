@@ -201,20 +201,9 @@ switch() {
 
     matugen_args=(--source-color-index 0)
 
-    if [[ "$color_flag" == "1" ]]; then
-        matugen_args+=(color hex "$color")
-        generate_colors_material_args=(--color "$color")
-    else
-        if [[ -z "$imgpath" ]]; then
-            echo 'Aborted'
-            exit 0
-        fi
-
+    local target_img=""
+    if [[ -n "$imgpath" ]]; then
         check_and_prompt_upscale "$imgpath" &
-
-        if [[ -z "$colors_only_flag" ]]; then
-            kill_existing_mpvpaper
-        fi
 
         if is_video "$imgpath"; then
             mkdir -p "$THUMBNAIL_DIR"
@@ -247,16 +236,19 @@ switch() {
             if [[ -z "$colors_only_flag" ]]; then
                 set_wallpaper_path "$imgpath"
 
-                local video_path="$imgpath"
-                monitors=$(hyprctl monitors -j | jq -r '.[] | .name')
-                for monitor in $monitors; do
-                    rm -f "/tmp/mpvsocket-$monitor"
-                    mpvpaper -o "$VIDEO_OPTS --input-ipc-server=/tmp/mpvsocket-$monitor" "$monitor" "$video_path" &
-                    if command -v mpvpaper-stop &>/dev/null; then
-                        mpvpaper-stop -p "/tmp/mpvsocket-$monitor" -m "$monitor" -f &
-                    fi
-                    sleep 0.1
-                done
+                if ! pgrep -f "mpvpaper.*$imgpath" &>/dev/null; then
+                    kill_existing_mpvpaper
+                    local video_path="$imgpath"
+                    monitors=$(hyprctl monitors -j | jq -r '.[] | .name')
+                    for monitor in $monitors; do
+                        rm -f "/tmp/mpvsocket-$monitor"
+                        mpvpaper -o "$VIDEO_OPTS --input-ipc-server=/tmp/mpvsocket-$monitor" "$monitor" "$video_path" &
+                        if command -v mpvpaper-stop &>/dev/null; then
+                            mpvpaper-stop -p "/tmp/mpvsocket-$monitor" -m "$monitor" -f &
+                        fi
+                        sleep 0.1
+                    done
+                fi
             fi
 
             thumbnail="$THUMBNAIL_DIR/$(basename "$imgpath").jpg"
@@ -267,10 +259,9 @@ switch() {
             fi
 
             if [ -f "$thumbnail" ]; then
-                matugen_args+=(image "$thumbnail")
-                generate_colors_material_args=(--path "$thumbnail")
+                target_img="$thumbnail"
                 if [[ -z "$colors_only_flag" ]]; then
-                    create_restore_script "$video_path"
+                    create_restore_script "$imgpath"
                 fi
             else
                 echo "Cannot create image to colorgen"
@@ -280,14 +271,26 @@ switch() {
                 exit 1
             fi
         else
-            matugen_args+=(image "$imgpath")
-            generate_colors_material_args+=(--path "$imgpath")
+            target_img="$imgpath"
             if [[ -z "$colors_only_flag" ]]; then
+                kill_existing_mpvpaper
                 set_wallpaper_path "$imgpath"
                 set_thumbnail_path ""
                 remove_restore
             fi
         fi
+    fi
+
+    if [[ "$color_flag" == "1" ]]; then
+        matugen_args+=(color hex "$color")
+        generate_colors_material_args=(--color "$color")
+    else
+        if [[ -z "$target_img" ]]; then
+            echo 'Aborted'
+            exit 0
+        fi
+        matugen_args+=(image "$target_img")
+        generate_colors_material_args=(--path "$target_img")
     fi
 
     if [[ -z "$mode_flag" ]]; then

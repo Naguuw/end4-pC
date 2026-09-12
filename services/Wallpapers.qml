@@ -427,7 +427,7 @@ Singleton {
         thumbgenProc.running = false
         thumbgenProc.command = [
             "bash", "-c",
-            `${thumbgenScriptPath} --size ${size} --machine_progress -d ${FileUtils.trimFileProtocol(root.directory)} || ${generateThumbnailsMagickScriptPath} --size ${size} --machine_progress -d ${FileUtils.trimFileProtocol(root.directory)}`,
+            `${generateThumbnailsMagickScriptPath} --size ${size} --machine_progress -d '${FileUtils.trimFileProtocol(root.directory)}'`,
         ]
         // console.log("[Wallpapers] Updating thumbnails with command ", thumbgenProc.command.join(" "))
         root.thumbnailGenerationProgress = 0

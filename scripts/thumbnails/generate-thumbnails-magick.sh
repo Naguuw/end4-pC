@@ -85,18 +85,18 @@ generate_thumbnail() {
             local vid_thumb="$VIDEO_THUMBNAIL_DIR/${vid_basename}.jpg"
             
             # Generate thumbnail frame for mpvpaper / quickshell
-            if [ ! -f "$vid_thumb" ]; then
+            if [[ ! -s "$vid_thumb" || "$abs_path" -nt "$vid_thumb" ]]; then
                 ffmpeg -y -ss 00:00:01 -i "$abs_path" -vframes 1 -q:v 2 "$vid_thumb" &>/dev/null || \
                 ffmpeg -y -i "$abs_path" -vframes 1 -q:v 2 "$vid_thumb" &>/dev/null || true
             fi
 
             # Also generate freedesktop cached png if possible
-            if [ -f "$vid_thumb" ] && [ ! -f "$out" ]; then
+            if [[ -s "$vid_thumb" && ( ! -s "$out" || "$vid_thumb" -nt "$out" ) ]]; then
                 magick "$vid_thumb" -resize "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" "$out" 2>/dev/null || true
             fi
         fi
     elif is_image "$abs_path"; then
-        if [ ! -f "$out" ]; then
+        if [[ ! -s "$out" || "$abs_path" -nt "$out" ]]; then
             magick "$abs_path" -resize "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" "$out" 2>/dev/null || true
         fi
     fi

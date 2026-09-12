@@ -13,7 +13,8 @@ Item {
 
     required property var fileModelData
     property bool isDirectory: fileModelData ? Boolean(fileModelData.fileIsDir) : false
-    property bool useThumbnail: fileModelData ? Images.isValidImageByName(fileModelData.fileName) : false
+    property bool isVideoFile: fileModelData?.filePath ? Wallpapers.isVideo(fileModelData.filePath) : false
+    property bool useThumbnail: (fileModelData ? Images.isValidImageByName(fileModelData.fileName) : false) || isVideoFile
     property alias colBackground: background.color
     property alias colText: wallpaperItemName.color
     property alias radius: background.radius
@@ -70,6 +71,8 @@ Item {
 
                         generateThumbnail: false
                         sourcePath: (fileModelData && fileModelData.filePath) ? fileModelData.filePath : ""
+                        overrideThumbnailPath: root.isVideoFile ? Wallpapers.thumbnailFor(fileModelData.filePath) : ""
+                        fallbacks: root.isVideoFile ? [Quickshell.iconPath("video-x-generic")] : []
                         cache: false
                         fillMode: Image.PreserveAspectCrop
                         clip: true
@@ -79,12 +82,12 @@ Item {
 
                         Connections {
                             function onThumbnailGenerated(directory) {
-                                if (thumbnailImage.status !== Image.Error && thumbnailImage.status !== Image.Null)
+                                const cleanParent = FileUtils.parentDirectory(thumbnailImage.sourcePath);
+                                const cleanDir = FileUtils.trimFileProtocol(directory).replace(/\/+$/, "");
+                                if (cleanParent !== cleanDir)
                                     return ;
 
-                                if (FileUtils.parentDirectory(thumbnailImage.sourcePath) !== FileUtils.trimFileProtocol(directory))
-                                    return ;
-
+                                thumbnailImage.currentFallbackIndex = 0;
                                 thumbnailImage.source = "";
                                 thumbnailImage.source = thumbnailImage.overrideThumbnailPath.length > 0
                                     ? thumbnailImage.overrideThumbnailPath
@@ -92,12 +95,12 @@ Item {
                             }
 
                             function onThumbnailGeneratedFile(filePath) {
-                                if (thumbnailImage.status !== Image.Error && thumbnailImage.status !== Image.Null)
+                                const cleanSource = FileUtils.trimFileProtocol(thumbnailImage.sourcePath);
+                                const cleanFile = FileUtils.trimFileProtocol(filePath);
+                                if (cleanSource !== cleanFile)
                                     return ;
 
-                                if (Qt.resolvedUrl(thumbnailImage.sourcePath) !== Qt.resolvedUrl(filePath))
-                                    return ;
-
+                                thumbnailImage.currentFallbackIndex = 0;
                                 thumbnailImage.source = "";
                                 thumbnailImage.source = thumbnailImage.overrideThumbnailPath.length > 0
                                     ? thumbnailImage.overrideThumbnailPath
