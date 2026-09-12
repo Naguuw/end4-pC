@@ -352,7 +352,7 @@ ContentPage {
                         to: 100
                         stopIndicatorValues: [50]
                         usePercentTooltip: true
-                        onValueChanged: {
+                        onMoved: {
                             Config.options.background.wallpaperOffsetX = value / 100;
                         }
                     }
@@ -366,7 +366,7 @@ ContentPage {
                         to: 100
                         stopIndicatorValues: [50]
                         usePercentTooltip: true
-                        onValueChanged: {
+                        onMoved: {
                             Config.options.background.wallpaperOffsetY = value / 100;
                         }
                     }
@@ -380,7 +380,7 @@ ContentPage {
                         to: 200
                         stopIndicatorValues: [100]
                         usePercentTooltip: true
-                        onValueChanged: {
+                        onMoved: {
                             Config.options.background.wallpaperScale = value / 100;
                         }
                     }
