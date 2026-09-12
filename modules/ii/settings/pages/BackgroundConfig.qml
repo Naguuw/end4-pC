@@ -49,23 +49,27 @@ ContentPage {
             anchors.fill: parent
             clip: true
 
+            readonly property bool isVideo: /\.(mp4|webm|mkv|avi|mov)$/i.test(modelData)
+                || (Config.options.background.thumbnailPath !== "" && modelData === Config.options.background.thumbnailPath)
+
             StyledImage {
                 id: carouselImg
                 source: "file://" + FileUtils.trimFileProtocol(modelData)
-                fillMode: Image.Stretch
+                fillMode: parent.isVideo ? Image.PreserveAspectCrop : Image.Stretch
                 cache: true
                 asynchronous: true
 
                 readonly property real baseScale: {
+                    if (parent.isVideo) return 1.0;
                     if (sourceSize.width <= 0 || sourceSize.height <= 0 || parent.width <= 0 || parent.height <= 0) return 1.0;
                     return Math.max(parent.width / sourceSize.width, parent.height / sourceSize.height) * (Config.options.background.wallpaperScale ?? 1.0);
                 }
 
-                width: sourceSize.width > 0 ? Math.ceil(sourceSize.width * baseScale) : parent.width
-                height: sourceSize.height > 0 ? Math.ceil(sourceSize.height * baseScale) : parent.height
+                width: (!parent.isVideo && sourceSize.width > 0) ? Math.ceil(sourceSize.width * baseScale) : parent.width
+                height: (!parent.isVideo && sourceSize.height > 0) ? Math.ceil(sourceSize.height * baseScale) : parent.height
 
-                x: Math.round((parent.width - width) * (Config.options.background.wallpaperOffsetX ?? 0.5))
-                y: Math.round((parent.height - height) * (Config.options.background.wallpaperOffsetY ?? 0.5))
+                x: parent.isVideo ? 0 : Math.round((parent.width - width) * (Config.options.background.wallpaperOffsetX ?? 0.5))
+                y: parent.isVideo ? 0 : Math.round((parent.height - height) * (Config.options.background.wallpaperOffsetY ?? 0.5))
             }
         }
     }
@@ -336,6 +340,7 @@ ContentPage {
                 title: Translation.tr("Wallpaper position")
                 tooltip: Translation.tr("Adjust wallpaper alignment and scale when aspect ratio differs from screen")
                 Layout.fillWidth: true
+                visible: !/\.(mp4|webm|mkv|avi|mov)$/i.test(Config.options.background.wallpaperPath)
 
                 GroupedList {
                     ConfigSlider {
@@ -347,7 +352,7 @@ ContentPage {
                         to: 100
                         stopIndicatorValues: [50]
                         usePercentTooltip: true
-                        onValueChanged: {
+                        onMoved: {
                             Config.options.background.wallpaperOffsetX = value / 100;
                         }
                     }
@@ -361,7 +366,7 @@ ContentPage {
                         to: 100
                         stopIndicatorValues: [50]
                         usePercentTooltip: true
-                        onValueChanged: {
+                        onMoved: {
                             Config.options.background.wallpaperOffsetY = value / 100;
                         }
                     }
@@ -375,7 +380,7 @@ ContentPage {
                         to: 200
                         stopIndicatorValues: [100]
                         usePercentTooltip: true
-                        onValueChanged: {
+                        onMoved: {
                             Config.options.background.wallpaperScale = value / 100;
                         }
                     }
