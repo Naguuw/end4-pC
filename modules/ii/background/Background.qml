@@ -226,20 +226,21 @@ Variants {
 
                 Image {
                     id: previousWallpaperImg
-                    fillMode: Image.Stretch
+                    fillMode: bgRoot.wallpaperIsVideo ? Image.PreserveAspectCrop : Image.Stretch
                     cache: true
                     mipmap: true
                     smooth: true
 
                     readonly property real baseScale: {
+                        if (bgRoot.wallpaperIsVideo) return 1.0;
                         if (sourceSize.width <= 0 || sourceSize.height <= 0 || previousWallpaper.width <= 0 || previousWallpaper.height <= 0) return 1.0;
                         return Math.max(previousWallpaper.width / sourceSize.width, previousWallpaper.height / sourceSize.height) * bgRoot.wallpaperScale;
                     }
-                    width: sourceSize.width > 0 ? Math.ceil(sourceSize.width * baseScale) : previousWallpaper.width
-                    height: sourceSize.height > 0 ? Math.ceil(sourceSize.height * baseScale) : previousWallpaper.height
+                    width: (!bgRoot.wallpaperIsVideo && sourceSize.width > 0) ? Math.ceil(sourceSize.width * baseScale) : previousWallpaper.width
+                    height: (!bgRoot.wallpaperIsVideo && sourceSize.height > 0) ? Math.ceil(sourceSize.height * baseScale) : previousWallpaper.height
 
-                    x: Math.round((previousWallpaper.width - width) * bgRoot.wallpaperOffsetX)
-                    y: Math.round((previousWallpaper.height - height) * bgRoot.wallpaperOffsetY)
+                    x: bgRoot.wallpaperIsVideo ? 0 : Math.round((previousWallpaper.width - width) * bgRoot.wallpaperOffsetX)
+                    y: bgRoot.wallpaperIsVideo ? 0 : Math.round((previousWallpaper.height - height) * bgRoot.wallpaperOffsetY)
                 }
             }
 
@@ -261,21 +262,22 @@ Variants {
 
                 StyledImage {
                     id: wallpaperImg
-                    fillMode: Image.Stretch
+                    fillMode: bgRoot.wallpaperIsVideo ? Image.PreserveAspectCrop : Image.Stretch
                     cache: true
                     smooth: true
                     mipmap: true
                     asynchronous: true
 
                     readonly property real baseScale: {
+                        if (bgRoot.wallpaperIsVideo) return 1.0;
                         if (sourceSize.width <= 0 || sourceSize.height <= 0 || wallpaper.width <= 0 || wallpaper.height <= 0) return 1.0;
                         return Math.max(wallpaper.width / sourceSize.width, wallpaper.height / sourceSize.height) * bgRoot.wallpaperScale;
                     }
-                    width: sourceSize.width > 0 ? Math.ceil(sourceSize.width * baseScale) : wallpaper.width
-                    height: sourceSize.height > 0 ? Math.ceil(sourceSize.height * baseScale) : wallpaper.height
+                    width: (!bgRoot.wallpaperIsVideo && sourceSize.width > 0) ? Math.ceil(sourceSize.width * baseScale) : wallpaper.width
+                    height: (!bgRoot.wallpaperIsVideo && sourceSize.height > 0) ? Math.ceil(sourceSize.height * baseScale) : wallpaper.height
 
-                    x: Math.round((wallpaper.width - width) * bgRoot.wallpaperOffsetX)
-                    y: Math.round((wallpaper.height - height) * bgRoot.wallpaperOffsetY)
+                    x: bgRoot.wallpaperIsVideo ? 0 : Math.round((wallpaper.width - width) * bgRoot.wallpaperOffsetX)
+                    y: bgRoot.wallpaperIsVideo ? 0 : Math.round((wallpaper.height - height) * bgRoot.wallpaperOffsetY)
 
                     onStatusChanged: {
                         if (status === Image.Ready && bgRoot.transitionPending) {
