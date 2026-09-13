@@ -715,6 +715,7 @@ Singleton {
                 property bool bottomGroup: true
                 property bool mediaPlayer: false
                 property string bannerImage: ""
+                property real bannerOffsetY: 0.5
                 property bool keepRightSidebarLoaded: true
                 property JsonObject translator: JsonObject {
                     property bool enable: false
