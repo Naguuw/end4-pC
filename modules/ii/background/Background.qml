@@ -107,11 +107,14 @@ Variants {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
+        property bool ready: false
+
         Component.onCompleted: {
             previousWallpaper.source = bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
             wallpaper.source = bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
             bgRoot.currentWallpaperSource = bgRoot.wallpaperPath
             bgRoot.previousWallpaperSource = ""
+            bgRoot.transitionPending = false
             bgRoot.transitionProgress = 1.0
             if (bgRoot.wallpaperAnimation !== "") {
                 bgRoot.currentShader = bgRoot.wallpaperAnimation === "random"
@@ -119,9 +122,21 @@ Variants {
                     : bgRoot.wallpaperAnimation
             }
             bgRoot.videoRevealed = bgRoot.wallpaperIsVideo
+            bgRoot.ready = true
         }
 
         onWallpaperPathChanged: {
+            if (!bgRoot.ready) {
+                previousWallpaper.source = bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
+                wallpaper.source = bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
+                bgRoot.currentWallpaperSource = bgRoot.wallpaperPath
+                bgRoot.previousWallpaperSource = ""
+                bgRoot.transitionPending = false
+                bgRoot.transitionProgress = 1.0
+                return
+            }
+            if (wallpaperPath === bgRoot.currentWallpaperSource) return
+
             bgRoot.videoRevealed = false
             if (wallpaperSafetyTriggered) {
                 bgRoot.transitionPending = false
@@ -249,7 +264,7 @@ Variants {
                 anchors.fill: parent
                 clip: true
                 layer.enabled: true
-                visible: !blurLoader.active && !bgRoot.videoRevealed
+                visible: !bgRoot.videoRevealed
                     && (bgRoot.wallpaperAnimation === "" || bgRoot.transitionProgress >= 1.0)
                     && !centeredWallpaper.centeredHidesFullWallpaper
                 opacity: centeredWallpaper.centeredFullWallpaperOpacity()
@@ -292,7 +307,8 @@ Variants {
             ShaderEffect {
                 id: transitionEffect
                 anchors.fill: parent
-                visible: !blurLoader.active && bgRoot.wallpaperAnimation !== "" && !centeredWallpaper.centeredShapeActive && !bgRoot.videoRevealed
+                layer.enabled: true
+                visible: bgRoot.wallpaperAnimation !== "" && !centeredWallpaper.centeredShapeActive && !bgRoot.videoRevealed
                     && bgRoot.transitionProgress < 1.0
 
                 property var fromImage: previousWallpaper
