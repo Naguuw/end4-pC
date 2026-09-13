@@ -393,13 +393,19 @@ ContentPage {
                     syncWallpaperSwitch.checked = Qt.binding(() => Config.options.background.lockWall === "")
                 }
                 function onWallpaperOffsetXChanged() {
-                    hPosSlider.value = Math.round((Config.options.background.wallpaperOffsetX ?? 0.5) * 100);
+                    if (!hPosSlider.pressed) {
+                        hPosSlider.value = Math.round((Config.options.background.wallpaperOffsetX ?? 0.5) * 100);
+                    }
                 }
                 function onWallpaperOffsetYChanged() {
-                    vPosSlider.value = Math.round((Config.options.background.wallpaperOffsetY ?? 0.5) * 100);
+                    if (!hPosSlider.pressed) {
+                        vPosSlider.value = Math.round((Config.options.background.wallpaperOffsetY ?? 0.5) * 100);
+                    }
                 }
                 function onWallpaperScaleChanged() {
-                    scalePosSlider.value = Math.round((Config.options.background.wallpaperScale ?? 1.0) * 100);
+                    if (!hPosSlider.pressed) {
+                        scalePosSlider.value = Math.round((Config.options.background.wallpaperScale ?? 1.0) * 100);
+                    }
                 }
             }
         
