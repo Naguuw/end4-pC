@@ -133,7 +133,7 @@ Item {
                     anchors.left: btn.right
                     anchors.leftMargin: 8
                     anchors.verticalCenter: btn.verticalCenter
-                    reveal: recordingItem.isRecording && !root.vertical
+                    reveal: recordingItem.isRecording && !root.vertical && !GlobalStates.dynamicIslandEnabled
 
                     StyledText {
                         width: implicitWidth
