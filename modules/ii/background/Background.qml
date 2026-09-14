@@ -121,7 +121,7 @@ Variants {
                     ? bgRoot.shaderList[Math.floor(Math.random() * bgRoot.shaderList.length)]
                     : bgRoot.wallpaperAnimation
             }
-            bgRoot.videoRevealed = bgRoot.wallpaperIsVideo
+            bgRoot.videoRevealed = !GlobalStates.screenLocked && bgRoot.wallpaperIsVideo
             bgRoot.ready = true
         }
 
@@ -151,7 +151,7 @@ Variants {
                 previousWallpaper.source = wallpaperPath
                 bgRoot.currentWallpaperSource = wallpaperPath
                 if (!bgRoot.wallpaperIsVideo) return
-                bgRoot.videoRevealed = true
+                bgRoot.videoRevealed = !GlobalStates.screenLocked
                 return
             }
 
@@ -183,7 +183,7 @@ Variants {
                 previousWallpaper.source = bgRoot.currentWallpaperSource
                 bgRoot.previousWallpaperSource = ""
                 bgRoot.transitionProgress = 1.0
-                bgRoot.videoRevealed = bgRoot.wallpaperIsVideo
+                bgRoot.videoRevealed = !GlobalStates.screenLocked && bgRoot.wallpaperIsVideo
             }
         }
 
@@ -212,7 +212,11 @@ Variants {
             target: GlobalStates
             function onScreenLockedChanged() {
                 if (!GlobalStates.screenLocked) {
-                    bgRoot.videoRevealed = bgRoot.wallpaperIsVideo
+                    if (!scaleAnim.running) {
+                        bgRoot.videoRevealed = bgRoot.wallpaperIsVideo
+                    }
+                } else {
+                    bgRoot.videoRevealed = false
                 }
             }
         }
@@ -231,8 +235,8 @@ Variants {
                 anchors.fill: parent
                 clip: true
                 layer.enabled: true
-                visible: !bgRoot.videoRevealed
-                opacity: bgRoot.videoRevealed ? 0 : 1
+                visible: !bgRoot.videoRevealed || blurLoader.active
+                opacity: (bgRoot.videoRevealed && !blurLoader.active) ? 0 : 1
 
                 property alias source: previousWallpaperImg.source
                 property alias status: previousWallpaperImg.status
@@ -264,7 +268,7 @@ Variants {
                 anchors.fill: parent
                 clip: true
                 layer.enabled: true
-                visible: !bgRoot.videoRevealed
+                visible: (!bgRoot.videoRevealed || blurLoader.active)
                     && (bgRoot.wallpaperAnimation === "" || bgRoot.transitionProgress >= 1.0)
                     && !centeredWallpaper.centeredHidesFullWallpaper
                 opacity: centeredWallpaper.centeredFullWallpaperOpacity()
@@ -308,7 +312,8 @@ Variants {
                 id: transitionEffect
                 anchors.fill: parent
                 layer.enabled: true
-                visible: bgRoot.wallpaperAnimation !== "" && !centeredWallpaper.centeredShapeActive && !bgRoot.videoRevealed
+                visible: bgRoot.wallpaperAnimation !== "" && !centeredWallpaper.centeredShapeActive
+                    && (!bgRoot.videoRevealed || blurLoader.active)
                     && bgRoot.transitionProgress < 1.0
 
                 property var fromImage: previousWallpaper
@@ -351,6 +356,11 @@ Variants {
                         duration: 400
                         easing.type: Easing.BezierSpline
                         easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+                        onFinished: {
+                            if (!GlobalStates.screenLocked) {
+                                bgRoot.videoRevealed = bgRoot.wallpaperIsVideo
+                            }
+                        }
                     }
                 }
                 sourceComponent: GaussianBlur {
