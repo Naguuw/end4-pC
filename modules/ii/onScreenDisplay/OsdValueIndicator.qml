@@ -13,6 +13,11 @@ Item {
     property bool scaleIcon: false
     property alias from: valueProgressBar.from
     property alias to: valueProgressBar.to
+    property alias highlightColor: valueProgressBar.highlightColor
+    property alias trackColor: valueProgressBar.trackColor
+    property alias handleColor: valueProgressBar.handleColor
+    property alias badgeColor: valueTextBg.color
+    property alias badgeTextColor: valueText.color
     property string displayText: Math.round(root.value * 100)
 
     implicitWidth: Appearance.sizes.osdWidth + 4 * Appearance.sizes.elevationMargin + 80

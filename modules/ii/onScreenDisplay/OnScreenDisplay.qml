@@ -76,13 +76,13 @@ Scope {
         function onVolumeChanged() {
             if (!Audio.ready)
                 return;
-            root.currentIndicator = (Audio.sink.audio.volume > 1.0) ? "volume_boost" : "volume";
+            root.currentIndicator = (Math.round((Audio.sink.audio.volume ?? 0) * 100) > 100) ? "volume_boost" : "volume";
             root.triggerOsd();
         }
         function onMutedChanged() {
             if (!Audio.ready)
                 return;
-            root.currentIndicator = (Audio.sink.audio.volume > 1.0) ? "volume_boost" : "volume";
+            root.currentIndicator = (Math.round((Audio.sink.audio.volume ?? 0) * 100) > 100) ? "volume_boost" : "volume";
             root.triggerOsd();
         }
     }

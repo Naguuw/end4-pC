@@ -3,6 +3,8 @@ pragma ComponentBehavior: Bound
 import qs.modules.common
 import QtQuick
 import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 
 /**
@@ -60,17 +62,32 @@ Singleton {
     }
 
     function incrementVolume() {
-        if (!Audio.sink?.audio) return;
-        const currentVolume = Audio.value;
-        const step = currentVolume < 0.1 ? 0.01 : 0.02;
-        Audio.sink.audio.volume = Math.min(1, Math.round((currentVolume + step) * 100) / 100);
+        if (!root.sink?.audio) return;
+        const currentVolPercent = Math.round((root.sink.audio.volume ?? 0) * 100);
+        const step = currentVolPercent < 10 ? 1 : 2;
+        const maxBoost = 150;
+
+        let newVolPercent;
+        if (currentVolPercent < 100) {
+            newVolPercent = Math.min(100, currentVolPercent + step);
+        } else {
+            newVolPercent = Math.min(maxBoost, currentVolPercent + step);
+        }
+        root.sink.audio.volume = Math.round(newVolPercent) / 100;
     }
     
     function decrementVolume() {
-        if (!Audio.sink?.audio) return;
-        const currentVolume = Audio.value;
-        const step = currentVolume < 0.1 ? 0.01 : 0.02;
-        Audio.sink.audio.volume = Math.max(0, Math.round((currentVolume - step) * 100) / 100);
+        if (!root.sink?.audio) return;
+        const currentVolPercent = Math.round((root.sink.audio.volume ?? 0) * 100);
+        const step = currentVolPercent <= 10 ? 1 : 2;
+
+        let newVolPercent;
+        if (currentVolPercent > 100) {
+            newVolPercent = Math.max(100, currentVolPercent - step);
+        } else {
+            newVolPercent = Math.max(0, currentVolPercent - step);
+        }
+        root.sink.audio.volume = Math.round(newVolPercent) / 100;
     }
 
     function setDefaultSink(node) {
@@ -139,5 +156,44 @@ Singleton {
             oggPath
         ];
         Quickshell.execDetached(command);
+    }
+
+    // External trigger points
+    IpcHandler {
+        target: "audio"
+
+        function increment() {
+            root.incrementVolume();
+        }
+
+        function decrement() {
+            root.decrementVolume();
+        }
+
+        function toggleMute() {
+            root.toggleMute();
+        }
+
+        function toggleMicMute() {
+            root.toggleMicMute();
+        }
+    }
+
+    CompositorGlobalShortcut {
+        name: "volumeIncrease"
+        description: "Increase volume"
+        onPressed: root.incrementVolume()
+    }
+
+    CompositorGlobalShortcut {
+        name: "volumeDecrease"
+        description: "Decrease volume"
+        onPressed: root.decrementVolume()
+    }
+
+    CompositorGlobalShortcut {
+        name: "volumeToggleMute"
+        description: "Toggle volume mute"
+        onPressed: root.toggleMute()
     }
 }
