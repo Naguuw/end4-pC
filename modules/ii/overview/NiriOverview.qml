@@ -35,6 +35,8 @@ Item {
     readonly property real screenCenterX: monitorW / 2
 
     property var windows: HyprlandData.windowList
+    property var windowByAddress: HyprlandData.windowByAddress
+    property var windowAddresses: HyprlandData.addresses
 
     property int dragFromWs: -1
     property int dragFromPos: -1
@@ -428,6 +430,8 @@ Item {
                                 monitorData: winContainer.winMonData
                                 widgetMonitor: winContainer.winMonData
                                 scale: root.scale * rowItem.wsFitScale
+                                windowAddresses: root.windowAddresses
+                                windowByAddress: root.windowByAddress
                                 xOffset: 0
                                 yOffset: 0
                                 // Apps
