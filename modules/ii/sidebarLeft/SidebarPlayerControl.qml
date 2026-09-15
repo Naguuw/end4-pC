@@ -216,7 +216,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
-                        text: StringUtils.cleanMusicTitle(root.player?.trackTitle) || "Play"
+                        text: StringUtils.cleanMusicTitle(root.player?.trackTitle) || Translation.tr("Play")
 
                         Behavior on text {
                             SequentialAnimation {
