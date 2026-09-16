@@ -30,6 +30,14 @@ Singleton {
         addItem(item)
     }
 
+    function updateTask(index, desc) {
+        if (index >= 0 && index < list.length) {
+            list[index].content = desc
+            root.list = list.slice(0)
+            todoFileView.setText(JSON.stringify(root.list))
+        }
+    }
+
     function markDone(index) {
         if (index >= 0 && index < list.length) {
             list[index].done = true
@@ -75,7 +83,14 @@ Singleton {
         path: Qt.resolvedUrl(root.filePath)
         onLoaded: {
             const fileContents = todoFileView.text()
-            root.list = JSON.parse(fileContents)
+            try {
+                const parsed = JSON.parse(fileContents)
+                root.list = Array.isArray(parsed) ? parsed : []
+            } catch (e) {
+                console.log("[To Do] Corrupt or empty file, resetting to empty list. Error: " + e)
+                root.list = []
+                todoFileView.setText(JSON.stringify(root.list))
+            }
             console.log("[To Do] File loaded")
         }
         onLoadFailed: (error) => {

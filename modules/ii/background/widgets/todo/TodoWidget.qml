@@ -22,19 +22,47 @@ AbstractBackgroundWidget {
     implicitHeight: root.cardHeight * 2 + root.cardSpacing
 
     property string mode: "list" // "list" | "edit"
+    property var pendingTaskIndex: null
     property string editingText: ""
-    onModeChanged: GlobalStates.desktopWidgetKeyboardFocus = (mode === "edit")
+    onModeChanged: {
+        GlobalStates.desktopWidgetKeyboardFocus = (mode === "edit")
+        if (mode === "edit") {
+            Qt.callLater(() => {
+                editTextArea.forceActiveFocus()
+                editTextArea.cursorPosition = editTextArea.text.length
+            })
+        }
+    }
 
     function toggleFlip() { flipAnim.start() }
 
     function openNewTask() {
+        root.pendingTaskIndex = null
         root.editingText = ""
+        toggleFlip()
+    }
+
+    function openTask(task) {
+        root.pendingTaskIndex = task.originalIndex
+        root.editingText = task.content
+        toggleFlip()
+    }
+
+    function deleteCurrentAndBack() {
+        if (root.pendingTaskIndex !== null) {
+            Todo.deleteItem(root.pendingTaskIndex)
+            root.pendingTaskIndex = null
+        }
         toggleFlip()
     }
 
     function saveAndBack() {
         if (root.editingText.trim().length > 0) {
-            Todo.addTask(root.editingText.trim())
+            if (root.pendingTaskIndex !== null) {
+                Todo.updateTask(root.pendingTaskIndex, root.editingText.trim())
+            } else {
+                Todo.addTask(root.editingText.trim())
+            }
         }
         toggleFlip()
     }
@@ -192,25 +220,28 @@ AbstractBackgroundWidget {
                             required property int index
 
                             width: todoListView.width
-                            implicitHeight: 55
+                            implicitHeight: 56
                             padding: 0
                             background: null
                             clip: true
 
                             property color bg: {
                                 const cyclePos = index % 3
-                                if (cyclePos === 0) return Appearance.colors.colTertiary
+                                if (cyclePos === 0) return Appearance.colors.colPrimary
                                 if (cyclePos === 1) return Appearance.colors.colSecondary
-                                return Appearance.colors.colPrimary
+                                return Appearance.colors.colTertiary
                             }
                             property color fg: {
                                 const cyclePos = index % 3
-                                if (cyclePos === 0) return Appearance.colors.colOnTertiary
+                                if (cyclePos === 0) return Appearance.colors.colOnPrimary
                                 if (cyclePos === 1) return Appearance.colors.colOnSecondary
-                                return Appearance.colors.colOnPrimary
+                                return Appearance.colors.colOnTertiary
                             }
 
+                            onClicked: root.openTask(taskCard.modelData)
+
                             contentItem: Rectangle {
+                                id: cardBg
                                 radius: Appearance.rounding.normal
                                 color: taskCard.bg
                                 width: parent.width - Math.abs(taskCard.swipe.position) * 6
@@ -218,76 +249,58 @@ AbstractBackgroundWidget {
 
                                 RowLayout {
                                     anchors {
-                                        left: parent.left; right: parent.right
-                                        verticalCenter: parent.verticalCenter
-                                        leftMargin: 4; rightMargin: 10
+                                        fill: parent
+                                        leftMargin: 12; rightMargin: 12
+                                        topMargin: 4; bottomMargin: 4
                                     }
-                                    spacing: 4
+                                    spacing: 8
 
-                                    Rectangle {
-                                        Layout.leftMargin: 8
+                                    RippleButton {
+                                        id: checkBtn
+                                        padding: 0
                                         Layout.preferredWidth: 26
                                         Layout.preferredHeight: 26
-                                        radius: Appearance.rounding.full
-                                        color: taskCard.modelData.done
+                                        Layout.alignment: Qt.AlignVCenter
+                                        buttonRadius: Appearance.rounding.full
+                                        border: true
+                                        borderWidth: 2
+                                        colBorder: taskCard.fg
+                                        colBackground: taskCard.modelData.done
                                             ? ColorUtils.transparentize(taskCard.fg, 0.8)
                                             : "transparent"
-                                        border.width: 2
-                                        border.color: taskCard.fg
+                                        colBackgroundHover: ColorUtils.transparentize(taskCard.fg, 0.75)
+                                        colRipple: ColorUtils.transparentize(taskCard.fg, 0.6)
+                                        onClicked: {
+                                            if (taskCard.modelData.done)
+                                                Todo.markUnfinished(taskCard.modelData.originalIndex)
+                                            else
+                                                Todo.markDone(taskCard.modelData.originalIndex)
+                                        }
 
-                                        MaterialSymbol {
-                                            anchors.centerIn: parent
+                                        contentItem: MaterialSymbol {
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
                                             visible: taskCard.modelData.done
                                             text: "check"
                                             iconSize: Appearance.font.pixelSize.normal
                                             color: taskCard.fg
                                         }
 
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                if (taskCard.modelData.done)
-                                                    Todo.markUnfinished(taskCard.modelData.originalIndex)
-                                                else
-                                                    Todo.markDone(taskCard.modelData.originalIndex)
-                                            }
+                                        StyledToolTip {
+                                            text: taskCard.modelData.done ? Translation.tr("Mark unfinished") : Translation.tr("Mark done")
                                         }
                                     }
 
                                     StyledText {
                                         Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignVCenter
                                         color: taskCard.fg
                                         text: taskCard.modelData.content
+                                        font.weight: Font.DemiBold
+                                        font.pixelSize: Appearance.font.pixelSize.normal
+                                        font.strikeout: taskCard.modelData.done
                                         elide: Text.ElideRight
                                         maximumLineCount: 1
-                                        font.strikeout: taskCard.modelData.done
-                                    }
-
-                                    RippleButton {
-                                        id: deleteBtn
-                                        padding: 0
-                                        visible: taskCard.modelData.done
-                                        Layout.preferredWidth: 28
-                                        Layout.preferredHeight: 28
-                                        Layout.alignment: Qt.AlignVCenter
-                                        buttonRadius: 14
-                                        colBackground: "transparent"
-                                        colBackgroundHover: ColorUtils.transparentize(taskCard.fg, 0.8)
-                                        colRipple: ColorUtils.transparentize(taskCard.fg, 0.6)
-                                        onClicked: Todo.deleteItem(taskCard.modelData.originalIndex)
-
-                                        contentItem: MaterialSymbol {
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                            text: "delete"
-                                            iconSize: Appearance.font.pixelSize.normal
-                                            color: taskCard.fg
-                                        }
-
-                                        StyledToolTip {
-                                            text: Translation.tr("Delete task")
-                                        }
                                     }
                                 }
                             }
@@ -317,30 +330,65 @@ AbstractBackgroundWidget {
             ColumnLayout {
                 id: editPage
                 anchors { fill: parent; margins: 12 }
-                spacing: 10
+                spacing: 8
                 visible: root.mode === "edit"
 
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 4
 
-                    Rectangle {
-                        radius: Appearance.rounding.full
-                        color: "transparent"
-                        implicitWidth: 28; implicitHeight: 28
-                        MaterialSymbol {
+                    RippleButton {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.85)
+                        colRipple: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.7)
+                        onClicked: root.toggleFlip()
+
+                        contentItem: MaterialSymbol {
                             anchors.centerIn: parent
                             iconSize: Appearance.font.pixelSize.normal
                             text: "arrow_back"
                             color: Appearance.colors.colOnPrimaryContainer
                         }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleFlip()
+
+                        StyledToolTip {
+                            text: Translation.tr("Back")
                         }
                     }
+
+                    StyledText {
+                        Layout.leftMargin: 4
+                        font.pixelSize: Appearance.font.pixelSize.large
+                        font.weight: Font.Medium
+                        color: Appearance.colors.colOnPrimaryContainer
+                        text: root.pendingTaskIndex !== null ? Translation.tr("Edit Task") : Translation.tr("New Task")
+                    }
+
                     Item { Layout.fillWidth: true }
+
+                    RippleButton {
+                        visible: root.pendingTaskIndex !== null
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colError, 0.85)
+                        colRipple: ColorUtils.transparentize(Appearance.colors.colError, 0.7)
+                        onClicked: root.deleteCurrentAndBack()
+
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            iconSize: Appearance.font.pixelSize.normal
+                            text: "delete"
+                            color: Appearance.colors.colError
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Delete task")
+                        }
+                    }
 
                     ToolbarPairedFab {
                         Layout.rightMargin: 4
@@ -348,6 +396,10 @@ AbstractBackgroundWidget {
                         baseSize: 38
                         iconText: "save"
                         onClicked: root.saveAndBack()
+
+                        StyledToolTip {
+                            text: Translation.tr("Save task")
+                        }
                     }
                 }
 
@@ -357,16 +409,68 @@ AbstractBackgroundWidget {
                     radius: Appearance.rounding.normal
                     color: Appearance.colors.colSurfaceContainerLow
 
-                    TextArea {
-                        id: editTextArea
+                    ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 8
-                        text: root.editingText
-                        wrapMode: TextArea.Wrap
-                        placeholderText: "Type your task..."
-                        color: Appearance.colors.colOnLayer0
-                        background: null
-                        onTextChanged: root.editingText = text
+                        anchors.margins: 10
+                        spacing: 4
+
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+
+                            TextArea {
+                                id: editTextArea
+                                width: parent.width
+                                text: root.editingText
+                                wrapMode: TextArea.Wrap
+                                placeholderText: Translation.tr("Type your task here...")
+                                placeholderTextColor: Appearance.colors.colSubtext
+                                color: Appearance.colors.colOnLayer0
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                background: null
+                                selectByMouse: true
+                                onTextChanged: root.editingText = text
+                                Keys.onReturnPressed: (event) => {
+                                    if (event.modifiers === Qt.NoModifier) {
+                                        root.saveAndBack()
+                                        event.accepted = true
+                                    } else {
+                                        event.accepted = false
+                                    }
+                                }
+                                Keys.onEnterPressed: (event) => {
+                                    if (event.modifiers === Qt.NoModifier) {
+                                        root.saveAndBack()
+                                        event.accepted = true
+                                    } else {
+                                        event.accepted = false
+                                    }
+                                }
+                                Keys.onEscapePressed: (event) => {
+                                    root.toggleFlip()
+                                    event.accepted = true
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            StyledText {
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                text: `${root.editingText.trim().length} chars`
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            StyledText {
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                text: `${root.editingText.trim().split(/\s+/).filter(Boolean).length} words`
+                            }
+                        }
                     }
                 }
             }
