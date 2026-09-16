@@ -337,6 +337,15 @@ Singleton {
                         property real z: 0
                     }
 
+                    property JsonObject schedule: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                        property string sizeMode: "2x2"
+                    }
+
                     property JsonObject userCard: JsonObject {
                         property bool enable: false
                         property string placementStrategy: "free"

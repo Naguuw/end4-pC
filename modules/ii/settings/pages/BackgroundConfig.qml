@@ -1153,6 +1153,11 @@ ContentPage {
                             icon: "timer",
                             name: Translation.tr("Timers"),
                             enabled: Config.options.background.widgets.timers.enable
+                        },
+                        {
+                            icon: "event_note",
+                            name: Translation.tr("Schedule"),
+                            enabled: Config.options.background.widgets.schedule.enable
                         }
                         
                     ]
@@ -1205,6 +1210,8 @@ ContentPage {
                                             Config.options.background.widgets.todo.enable = checked
                                         else if (modelData.icon === "timer")
                                             Config.options.background.widgets.timers.enable = checked
+                                        else if (modelData.icon === "event_note")
+                                            Config.options.background.widgets.schedule.enable = checked
                                     }
                                 }
                             }

@@ -25,6 +25,7 @@ Item {
         { key: "notes",       icon: "note_stack_add",     name: Translation.tr("Notes") },
         { key: "timers",      icon: "timer",              name: Translation.tr("Timers") },
         { key: "todo",        icon: "add_task",           name: Translation.tr("To-Do") },
+        { key: "schedule",    icon: "event_note",         name: Translation.tr("Schedule") },
     ]
 
     Rectangle {
