@@ -15,6 +15,7 @@ RowLayout {
     property var currentValue: undefined
 
     property real fieldWidth: 220
+    property bool fillField: false
 
     property alias comboBox: comboBox
 
@@ -52,7 +53,8 @@ RowLayout {
 
     StyledComboBox {
         id: comboBox
-        Layout.preferredWidth: root.fieldWidth
+        Layout.fillWidth: root.fillField || root.fieldWidth <= 0
+        Layout.preferredWidth: (root.fillField || root.fieldWidth <= 0) ? -1 : root.fieldWidth
         Layout.alignment: Qt.AlignVCenter
         enabled: root.enabled
         textRole: root.textRole

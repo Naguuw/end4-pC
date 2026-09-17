@@ -46,9 +46,11 @@ RowLayout {
 
     ColumnLayout {
         Layout.fillWidth: true
+        Layout.preferredWidth: 0
         spacing: 0
         StyledText {
             Layout.fillWidth: true
+            wrapMode: Text.Wrap
             text: root.text
             color: root.colLabel
             opacity: root.enabled ? 1 : 0.4

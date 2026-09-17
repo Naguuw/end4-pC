@@ -510,7 +510,7 @@ ContentPage {
                         buttonIcon: "position_bottom_left"
                         text: Translation.tr("Bottom-left")
                         textRole: "displayName"
-                        fieldWidth: 50
+                        fillField: true
                         model: GlobalStates.hotCornerOptions
                         currentValue: Config.options.sidebar.cornerOpen.bottomLeftAction
                         onSelected: newValue => { Config.options.sidebar.cornerOpen.bottomLeftAction = newValue }
@@ -520,7 +520,7 @@ ContentPage {
                         buttonIcon: "position_bottom_right"
                         text: Translation.tr("Bottom-right")
                         textRole: "displayName"
-                        fieldWidth: 55
+                        fillField: true
                         model: GlobalStates.hotCornerOptions
                         currentValue: Config.options.sidebar.cornerOpen.bottomRightAction
                         onSelected: newValue => { Config.options.sidebar.cornerOpen.bottomRightAction = newValue }

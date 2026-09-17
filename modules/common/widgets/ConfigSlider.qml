@@ -35,8 +35,22 @@ RowLayout {
         StyledText {
             id: labelWidget
             Layout.preferredWidth: root.textWidth
+            Layout.maximumWidth: root.textWidth
             text: root.text
+            elide: Text.ElideRight
             color: Appearance.colors.colOnSecondaryContainer
+
+            StyledToolTip {
+                visible: labelMouseArea.containsMouse && labelWidget.truncated
+                text: root.text
+            }
+
+            MouseArea {
+                id: labelMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+            }
         }
     }
     StyledSlider {

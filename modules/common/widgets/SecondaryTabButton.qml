@@ -171,10 +171,17 @@ TabButton {
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: root.checked ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
                 text: buttonText
+                elide: Text.ElideRight
+                Layout.maximumWidth: Math.max(20, root.tabContentWidth - (iconLoader.active ? 30 : 0))
                 Behavior on color {
                     animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                 }
             }
         }
+    }
+
+    StyledToolTip {
+        visible: root.hovered && buttonTextWidget.truncated
+        text: root.buttonText
     }
 }

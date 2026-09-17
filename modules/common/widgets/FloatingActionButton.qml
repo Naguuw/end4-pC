@@ -12,7 +12,8 @@ RippleButton {
     property bool expanded: false
     property real baseSize: 56
     property real elementSpacing: 5
-    implicitWidth: expanded ? (Math.max(contentRowLayout.implicitWidth + 10 * 2, baseSize)) : baseSize
+    property real maxExpandedWidth: 200
+    implicitWidth: expanded ? Math.min(maxExpandedWidth, Math.max(contentRowLayout.implicitWidth + 10 * 2, baseSize)) : baseSize
     implicitHeight: baseSize
     buttonRadius: baseSize / 14 * 4
     colBackground: Appearance.colors.colPrimaryContainer
@@ -45,7 +46,7 @@ RippleButton {
             sourceComponent: Revealer {
                 visible: root.expanded || implicitWidth > 0
                 reveal: root.expanded
-                implicitWidth: reveal ? (buttonText.implicitWidth + root.elementSpacing + contentRowLayout.horizontalMargins) : 0
+                implicitWidth: reveal ? (buttonText.width + root.elementSpacing + contentRowLayout.horizontalMargins) : 0
                 StyledText {
                     id: buttonText
                     anchors {
@@ -53,6 +54,8 @@ RippleButton {
                         leftMargin: root.elementSpacing
                         verticalCenter: parent.verticalCenter
                     }
+                    width: Math.min(implicitWidth, Math.max(0, root.maxExpandedWidth - icon.width - contentRowLayout.horizontalMargins * 2 - root.elementSpacing - 10))
+                    elide: Text.ElideRight
                     text: root.buttonText
                     color: Appearance.colors.colOnPrimaryContainer
                     font.pixelSize: 14

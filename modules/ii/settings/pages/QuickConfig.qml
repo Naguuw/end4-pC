@@ -180,9 +180,13 @@ ContentPage {
                                 }
 
                                 StyledText {
+                                    id: schemeText
                                     anchors.bottom: parent.bottom
                                     anchors.right: parent.right
+                                    anchors.left: parent.left
                                     anchors.margins: 8
+                                    horizontalAlignment: Text.AlignRight
+                                    elide: Text.ElideRight
                                     text: modelData.displayName
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     font.weight: Font.Medium
@@ -197,6 +201,11 @@ ContentPage {
                                     onClicked: {
                                         Config.options.appearance.palette.type = modelData.value
                                         Quickshell.execDetached(["bash", "-c", `${Directories.wallpaperSwitchScriptPath} --noswitch`])
+                                    }
+
+                                    StyledToolTip {
+                                        visible: hoverArea.containsMouse && schemeText.truncated
+                                        text: modelData.displayName
                                     }
                                 }
                             }

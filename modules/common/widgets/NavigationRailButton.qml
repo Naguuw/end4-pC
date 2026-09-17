@@ -14,7 +14,8 @@ TabButton {
     property string buttonText
     property bool expanded: false
     property bool showToggledHighlight: true
-    readonly property real visualWidth: root.expanded ? root.baseSize + 20 + itemText.implicitWidth : root.baseSize
+    readonly property real maxExpandedVisualWidth: 200
+    readonly property real visualWidth: root.expanded ? Math.min(maxExpandedVisualWidth, root.baseSize + 20 + itemText.width) : root.baseSize
 
     property real baseSize: Config.options.settings.style === "minimal" ? 46 : 56
     property real baseHighlightHeight: 32
@@ -143,9 +144,15 @@ TabButton {
                 }
             }
             text: buttonText
+            width: root.expanded ? Math.min(implicitWidth, root.maxExpandedVisualWidth - root.baseSize - 20) : implicitWidth
+            elide: Text.ElideRight
             font.pixelSize: 14
             color: Appearance.colors.colOnLayer1
         }
     }
 
+    StyledToolTip {
+        visible: root.hovered && (!root.expanded || itemText.truncated)
+        text: root.buttonText
+    }
 }
