@@ -27,6 +27,7 @@ Scope {
             && Config.options.bar.centerOnlyReserveFrame
             && !Config.options.bar.bottom
             && !Config.options.bar.autoHide.enable
+            && GlobalStates.barOpen
         property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
         visible: GlobalStates.overviewOpen
 

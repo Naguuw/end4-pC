@@ -144,6 +144,7 @@ Scope { // Scope
             margins {
                 top: {
                     if (Config.options.bar.bottom) return 0;
+                    if (!GlobalStates.barOpen || GlobalStates.screenLocked) return 0;
                     if (Config?.options.bar.autoHide.enable) return 0;
                     if (!centerOnly) return 0;
                     switch (Config.options.bar.cornerStyle) {
@@ -156,6 +157,7 @@ Scope { // Scope
                 }
                 bottom: {
                     if (!Config.options.bar.bottom) return 0;
+                    if (!GlobalStates.barOpen || GlobalStates.screenLocked) return 0;
                     if (Config?.options.bar.autoHide.enable) return 0;
                     if (!centerOnly) return 0;
                     switch (Config.options.bar.cornerStyle) {
