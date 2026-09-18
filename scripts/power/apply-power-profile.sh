@@ -8,7 +8,13 @@
 # ==============================================================================
 
 PROFILE="${1:-balanced}"
-STATE_FILE="/tmp/quickshell-power-profile"
+STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/power-profile"
+
+save_state() {
+    local val="$1"
+    mkdir -p "$(dirname "$STATE_FILE")"
+    echo "$val" > "$STATE_FILE"
+}
 
 write_sysfs() {
     local val="$1"
@@ -79,7 +85,7 @@ case "$PROFILE" in
             sudo -n tlp bat >/dev/null 2>&1 || tlp bat >/dev/null 2>&1 || true
         fi
 
-        echo "power-saver" > "$STATE_FILE"
+        save_state "power-saver"
         ;;
 
     balanced|balance)
@@ -92,7 +98,7 @@ case "$PROFILE" in
         set_cpu_governor "powersave"
         set_gpu_profile "auto"
 
-        echo "balanced" > "$STATE_FILE"
+        save_state "balanced"
         ;;
 
     performance|perf)
@@ -110,11 +116,21 @@ case "$PROFILE" in
             sudo -n tlp ac >/dev/null 2>&1 || tlp ac >/dev/null 2>&1 || true
         fi
 
-        echo "performance" > "$STATE_FILE"
+        save_state "performance"
         ;;
 
     get)
-        [ -f "$STATE_FILE" ] && cat "$STATE_FILE" || echo "balanced"
+        if [ -f "$STATE_FILE" ]; then
+            cat "$STATE_FILE"
+        elif [ -f "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/power-profile" ]; then
+            cat "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/power-profile"
+        elif [ -f "${XDG_CONFIG_HOME:-$HOME/.local}/state/user/quickshell/power-profile" ]; then
+            cat "${XDG_CONFIG_HOME:-$HOME/.local}/state/user/quickshell/power-profile"
+        elif [ -f "/tmp/quickshell-power-profile" ]; then
+            cat "/tmp/quickshell-power-profile"
+        else
+            echo "balanced"
+        fi
         ;;
 
     *)
