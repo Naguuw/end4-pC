@@ -54,7 +54,9 @@ Singleton {
         Quickshell.exec([Directories.powerProfileScriptPath, "get"], (output) => {
             let p = output.trim()
             if (p === "power-saver" || p === "powersave" || p === "eco" || p === "balanced" || p === "performance") {
-                root.activeProfile = (p === "eco" || p === "powersave") ? "power-saver" : p
+                let normalized = (p === "eco" || p === "powersave") ? "power-saver" : p
+                root.activeProfile = normalized
+                root.setProfile(normalized)
             }
         })
     }

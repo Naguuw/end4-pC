@@ -8,7 +8,7 @@
 # ==============================================================================
 
 PROFILE="${1:-balanced}"
-STATE_FILE="/tmp/quickshell-power-profile"
+STATE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/power-profile"
 
 write_sysfs() {
     local val="$1"
