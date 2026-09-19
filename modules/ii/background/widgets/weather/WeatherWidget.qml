@@ -475,10 +475,14 @@ AbstractBackgroundWidget {
                         }
                         
                         StyledText {
-                            text: "Feels like " + (Weather.data?.tempFeelsLike ?? "--")
+                            Layout.fillWidth: true
+                            text: Translation.tr("Feels like %1").arg(Weather.data?.tempFeelsLike ?? "--")
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             color: Appearance.colors.colOnPrimaryContainer
                             opacity: 0.55
+                            fontSizeMode: Text.Fit
+                            minimumPixelSize: 10
+                            elide: Text.ElideRight
                         }
                     }
 
@@ -510,6 +514,7 @@ AbstractBackgroundWidget {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
                         radius: Appearance.rounding?.large ?? 18
                         color: Appearance.colors.colSurfaceVariant ?? ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
 
@@ -528,16 +533,22 @@ AbstractBackgroundWidget {
                                 spacing: 0
                                 Layout.fillWidth: true
                                 StyledText {
-                                    text: "Humidity"
+                                    Layout.fillWidth: true
+                                    text: Translation.tr("Humidity")
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
                                     opacity: 0.6
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 9
+                                    elide: Text.ElideRight
                                 }
                                 StyledText {
+                                    Layout.fillWidth: true
                                     text: Weather.data?.humidity ?? "--"
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Bold
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -546,6 +557,7 @@ AbstractBackgroundWidget {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
                         radius: Appearance.rounding?.large ?? 18
                         color: Appearance.colors.colSurfaceVariant ?? ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
 
@@ -564,16 +576,22 @@ AbstractBackgroundWidget {
                                 spacing: 0
                                 Layout.fillWidth: true
                                 StyledText {
-                                    text: "Wind"
+                                    Layout.fillWidth: true
+                                    text: Translation.tr("Wind")
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
                                     opacity: 0.6
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 9
+                                    elide: Text.ElideRight
                                 }
                                 StyledText {
+                                    Layout.fillWidth: true
                                     text: Weather.data?.wind ?? "--"
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Bold
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -582,6 +600,7 @@ AbstractBackgroundWidget {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
                         radius: Appearance.rounding?.large ?? 18
                         color: Appearance.colors.colSurfaceVariant ?? ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
 
@@ -600,16 +619,22 @@ AbstractBackgroundWidget {
                                 spacing: 0
                                 Layout.fillWidth: true
                                 StyledText {
-                                    text: "Rain Chance"
+                                    Layout.fillWidth: true
+                                    text: Translation.tr("Rain Chance")
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
                                     opacity: 0.6
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 9
+                                    elide: Text.ElideRight
                                 }
                                 StyledText {
+                                    Layout.fillWidth: true
                                     text: Weather.data?.cr ?? "--"
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Bold
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -618,6 +643,7 @@ AbstractBackgroundWidget {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
                         radius: Appearance.rounding?.large ?? 18
                         color: Appearance.colors.colSurfaceVariant ?? ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
 
@@ -636,16 +662,22 @@ AbstractBackgroundWidget {
                                 spacing: 0
                                 Layout.fillWidth: true
                                 StyledText {
-                                    text: "Visibility"
+                                    Layout.fillWidth: true
+                                    text: Translation.tr("Visibility")
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
                                     opacity: 0.6
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 9
+                                    elide: Text.ElideRight
                                 }
                                 StyledText {
+                                    Layout.fillWidth: true
                                     text: Weather.data?.visib ?? "--"
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Bold
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -654,6 +686,7 @@ AbstractBackgroundWidget {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
                         radius: Appearance.rounding?.large ?? 18
                         color: Appearance.colors.colSurfaceVariant ?? ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
 
@@ -672,16 +705,22 @@ AbstractBackgroundWidget {
                                 spacing: 0
                                 Layout.fillWidth: true
                                 StyledText {
-                                    text: "Sunrise"
+                                    Layout.fillWidth: true
+                                    text: Translation.tr("Sunrise")
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
                                     opacity: 0.6
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 9
+                                    elide: Text.ElideRight
                                 }
                                 StyledText {
+                                    Layout.fillWidth: true
                                     text: Weather.data?.sunrise ?? "--"
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Bold
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -690,6 +729,7 @@ AbstractBackgroundWidget {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
                         radius: Appearance.rounding?.large ?? 18
                         color: Appearance.colors.colSurfaceVariant ?? ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
 
@@ -708,16 +748,22 @@ AbstractBackgroundWidget {
                                 spacing: 0
                                 Layout.fillWidth: true
                                 StyledText {
-                                    text: "Sunset"
+                                    Layout.fillWidth: true
+                                    text: Translation.tr("Sunset")
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
                                     opacity: 0.6
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 9
+                                    elide: Text.ElideRight
                                 }
                                 StyledText {
+                                    Layout.fillWidth: true
                                     text: Weather.data?.sunset ?? "--"
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Bold
                                     color: Appearance.colors.colOnSurfaceVariant ?? Appearance.colors.colOnPrimaryContainer
+                                    elide: Text.ElideRight
                                 }
                             }
                         }

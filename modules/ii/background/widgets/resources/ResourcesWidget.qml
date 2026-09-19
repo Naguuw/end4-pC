@@ -36,6 +36,7 @@ AbstractBackgroundWidget {
         implicitHeight: root.cardHeight
         radius: Appearance.rounding?.verylarge ?? 30
         color: statCard.bgColor
+        clip: true
 
         StyledRectangularShadow {
             target: statCard
@@ -76,17 +77,24 @@ AbstractBackgroundWidget {
             Item { Layout.fillHeight: true }
 
             StyledText {
+                Layout.fillWidth: true
                 text: statCard.value
                 font.pixelSize: Appearance.font.pixelSize.hugeass
                 font.weight: Font.Bold
                 color: Appearance.colors.colOnPrimaryContainer
+                fontSizeMode: Text.Fit
+                minimumPixelSize: Appearance.font.pixelSize.large
             }
 
             StyledText {
+                Layout.fillWidth: true
                 text: statCard.label
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colOnPrimaryContainer
                 opacity: 0.6
+                fontSizeMode: Text.Fit
+                minimumPixelSize: 10
+                elide: Text.ElideRight
             }
         }
     }
@@ -104,13 +112,13 @@ AbstractBackgroundWidget {
         StatCard {
             icon: "planner_review"
             value: Math.round(ResourceUsage.cpuUsage * 100) + "%"
-            label: "CPU"
+            label: Translation.tr("CPU")
             shape: MaterialShape.Shape.Gem
         }
         StatCard {
             icon: "memory"
             value: Math.round(ResourceUsage.memoryUsedPercentage * 100) + "%"
-            label: "RAM"
+            label: Translation.tr("RAM")
             shape: MaterialShape.Shape.Cookie4Sided
             bgColor: Appearance.colors.colSecondaryContainer
             shapeColor: Appearance.colors.colSecondary
@@ -120,7 +128,7 @@ AbstractBackgroundWidget {
             value: root.hasBattery
                 ? Math.round(Battery.percentage * 100) + "%"
                 : Math.round(ResourceUsage.diskUsedPercentage * 100) + "%"
-            label: root.hasBattery ? "Battery" : "Disk"
+            label: root.hasBattery ? Translation.tr("Battery") : Translation.tr("Disk")
             shape: MaterialShape.Shape.Cookie12Sided
             bgColor: Appearance.colors.colTertiaryContainer
             shapeColor: Appearance.colors.colTertiary

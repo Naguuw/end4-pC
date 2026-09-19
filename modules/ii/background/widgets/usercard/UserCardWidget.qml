@@ -68,24 +68,24 @@ AbstractBackgroundWidget {
         const desc = (Weather.data?.description ?? "").toLowerCase();
         const temp = Weather.data?.temp ?? "--";
         if (desc.includes("rain"))
-            return { text: `• raining, grab a coffee`, icon: "coffee" };
+            return { text: `• ` + Translation.tr("raining, grab a coffee"), icon: "coffee" };
         if (desc.includes("clear"))
-            return { text: `• good day to touch grass`, icon: "eco" };
+            return { text: `• ` + Translation.tr("good day to touch grass"), icon: "eco" };
         if (desc.includes("cloud"))
-            return { text: `• a bit cloudy today`, icon: "cloud" };
+            return { text: `• ` + Translation.tr("a bit cloudy today"), icon: "cloud" };
         if (desc.includes("snow"))
-            return { text: `• snowing`, icon: "ac_unit" };
+            return { text: `• ` + Translation.tr("snowing"), icon: "ac_unit" };
         return { text: `• ${Weather.data?.description ?? ""}`, icon: "thermostat" };
     }
 
     function greetingFor(hour) {
-        if (hour < 12) return "Good Morning"
-        if (hour < 18) return "Good Afternoon"
-        return "Good Evening"
+        if (hour < 12) return Translation.tr("Good Morning")
+        if (hour < 18) return Translation.tr("Good Afternoon")
+        return Translation.tr("Good Evening")
     }
 
     readonly property string greetingText: greetingFor(DateTime.hour24)
-    readonly property string todayString: "Today • " + DateTime.clock.date.toLocaleDateString(Qt.locale(), "dddd d MMM")
+    readonly property string todayString: Translation.tr("Today • %1").arg(DateTime.clock.date.toLocaleDateString(Qt.locale(Translation.languageCode), "dddd d MMM"))
 
     implicitWidth:  card.implicitWidth
     implicitHeight: card.implicitHeight
@@ -225,7 +225,7 @@ AbstractBackgroundWidget {
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: "Hi, " + root.username + "!"
+                            text: Translation.tr("Hi, %1!").arg(root.username)
                             font.pixelSize: Appearance.font.pixelSize.normal
                             font.weight: Font.Bold
                             color: Appearance.colors.colOnPrimaryContainer
@@ -419,7 +419,7 @@ AbstractBackgroundWidget {
                                         font.pixelSize: Appearance.font.pixelSize.small
                                         font.weight: Font.DemiBold
                                         color: Appearance.colors.colPrimaryContainer
-                                        text: GlobalStates.screenLocked ? "Locked" : "Lock"
+                                        text: GlobalStates.screenLocked ? Translation.tr("Locked") : Translation.tr("Lock")
                                     }
                                 }
                                 MouseArea {
@@ -531,7 +531,7 @@ AbstractBackgroundWidget {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Up • " + DateTime.uptime
+                        text: Translation.tr("Up • %1").arg(DateTime.uptime)
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         color: Appearance.colors.colOnLayer1
                         opacity: 0.6

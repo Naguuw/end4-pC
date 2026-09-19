@@ -36,7 +36,15 @@ AbstractBackgroundWidget {
         Translation.tr("Saturday"),
         Translation.tr("Sunday")
     ]
-    readonly property var shortDayNames: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    readonly property var shortDayNames: [
+        Translation.tr("Mo"),
+        Translation.tr("Tu"),
+        Translation.tr("We"),
+        Translation.tr("Th"),
+        Translation.tr("Fr"),
+        Translation.tr("Sa"),
+        Translation.tr("Su")
+    ]
 
     readonly property int todayDayIndex: {
         const d = DateTime.clock.date.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
@@ -295,6 +303,7 @@ AbstractBackgroundWidget {
                         spacing: -3
 
                         StyledText {
+                            Layout.fillWidth: true
                             text: Translation.tr("SCHEDULE")
                             font.pixelSize: 9
                             font.weight: Font.Bold
@@ -303,16 +312,20 @@ AbstractBackgroundWidget {
                         }
 
                         StyledText {
+                            Layout.fillWidth: true
                             text: root.dayNames[root.selectedDay] ?? "Monday"
                             font.pixelSize: Appearance.font.pixelSize.normal + 1
                             font.weight: Font.DemiBold
                             color: Appearance.colors.colOnPrimaryContainer
+                            fontSizeMode: Text.Fit
+                            minimumPixelSize: Appearance.font.pixelSize.small
                             elide: Text.ElideRight
                         }
                     }
 
                     // Uniform circular action buttons (all 28x28)
                     RowLayout {
+                        Layout.alignment: Qt.AlignTop
                         spacing: 4
 
                         // Prev day
@@ -465,10 +478,13 @@ AbstractBackgroundWidget {
 
                                 StyledText {
                                     anchors.centerIn: parent
+                                    width: 22
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     text: root.shortDayNames[dayCell.index]
                                     font.pixelSize: 10
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 8
                                     font.weight: dayCell.isSelected || dayCell.isToday ? Font.Bold : Font.Normal
                                     color: dayCell.isSelected
                                         ? Appearance.colors.colOnPrimary
@@ -663,7 +679,7 @@ AbstractBackgroundWidget {
                                                     font.pixelSize: 8
                                                     font.weight: Font.Bold
                                                     color: Appearance.colors.colOnPrimary
-                                                    text: "LIVE"
+                                                    text: Translation.tr("LIVE")
                                                 }
                                             }
 
@@ -933,10 +949,13 @@ AbstractBackgroundWidget {
 
                                     StyledText {
                                         anchors.centerIn: parent
+                                        width: 22
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                         text: root.shortDayNames[dayBtn.index]
                                         font.pixelSize: 10
+                                        fontSizeMode: Text.Fit
+                                        minimumPixelSize: 8
                                         font.weight: root.editingDay === dayBtn.index ? Font.Bold : Font.Normal
                                         color: root.editingDay === dayBtn.index
                                             ? Appearance.colors.colOnPrimary

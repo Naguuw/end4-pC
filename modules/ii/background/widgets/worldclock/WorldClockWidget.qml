@@ -38,7 +38,7 @@ AbstractBackgroundWidget {
 
     property string localCityName: Weather.data?.city ?? "..."
     property string localTime: DateTime.time
-    property string localDate: Qt.locale().toString(new Date(), "dddd, MMMM dd yyyy")
+    property string localDate: Qt.locale(Translation.languageCode).toString(new Date(), "dddd, MMMM dd yyyy")
     property var worldCities: WorldClock.entries
     property bool showingSettings: false
 
@@ -97,8 +97,14 @@ AbstractBackgroundWidget {
             // 2x2
             ColumnLayout {
                 id: mainColumn
-                anchors { fill: parent; margins: 12 }
-                spacing: 10
+                anchors {
+                    fill: parent
+                    topMargin: 10
+                    bottomMargin: 10
+                    leftMargin: 12
+                    rightMargin: 12
+                }
+                spacing: 6
                 visible: sizeMode === "2x2" && !root.showingSettings
 
                 RowLayout {
@@ -148,17 +154,19 @@ AbstractBackgroundWidget {
                     spacing: -4
                     StyledText {
                         Layout.alignment: Qt.AlignRight
-                        font.pixelSize: 42; font.weight: Font.Bold
+                        font.pixelSize: 38; font.weight: Font.Bold
                         font.features: { "tnum": 1 }
                         color: Appearance.colors.colOnPrimaryContainer
                         text: root.localTime
                     }
                     StyledText {
-                        Layout.alignment: Qt.AlignRight
-                        font.pixelSize: Appearance.font.pixelSize.small
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignRight
+                        font.pixelSize: Appearance.font.pixelSize.smaller
                         color: Appearance.colors.colOnPrimaryContainer
                         opacity: 0.7
                         text: root.localDate
+                        elide: Text.ElideRight
                     }
                 }
 
@@ -173,7 +181,12 @@ AbstractBackgroundWidget {
                             id: cityCard
                             required property var modelData
                             required property int index
-                            Layout.preferredWidth: 120; Layout.preferredHeight: 54
+                            implicitWidth: 120
+                            implicitHeight: 52
+                            Layout.preferredWidth: 120
+                            Layout.preferredHeight: 52
+                            Layout.fillHeight: false
+                            clip: true
                             radius: Appearance.rounding.normal
                             color: modelData.isDay
                                 ? Appearance.colors.colPrimary
@@ -184,7 +197,13 @@ AbstractBackgroundWidget {
                             Behavior on color { ColorAnimation { duration: 400 } }
 
                             ColumnLayout {
-                                anchors { fill: parent; margins: 8 }
+                                anchors {
+                                    fill: parent
+                                    topMargin: 6
+                                    bottomMargin: 6
+                                    leftMargin: 8
+                                    rightMargin: 8
+                                }
                                 spacing: 2
                                 RowLayout {
                                     Layout.fillWidth: true

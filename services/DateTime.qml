@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import qs
+import qs.services
 import qs.modules.common
 import QtQuick
 import Quickshell
@@ -19,11 +20,12 @@ Singleton {
         }
     }
 
+    property var currentLocale: Qt.locale(Translation.languageCode)
     property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateWithYearFormat ?? "dd/MM/yyyy")
-    property string longDate: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
-    property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dddd, MMMM dd")
+    property string longDate: currentLocale.toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
+    property string collapsedCalendarFormat: currentLocale.toString(clock.date, "dddd, MMMM dd")
     readonly property bool use12HourFormat: (Config.options?.time.format ?? "hh:mm").toLowerCase().indexOf("ap") !== -1
     readonly property int hour24: clock.date.getHours()
     readonly property int hour12: (hour24 % 12 === 0) ? 12 : hour24 % 12
