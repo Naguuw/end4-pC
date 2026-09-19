@@ -140,7 +140,7 @@ AbstractBackgroundWidget {
                         font.pixelSize: Appearance.font.pixelSize.huge
                         font.weight: Font.Medium
                         color: Appearance.colors.colOnPrimaryContainer
-                        text: "Notes"
+                        text: Translation.tr("Notes")
                     }
                     Item { Layout.fillWidth: true }
 
@@ -473,7 +473,7 @@ AbstractBackgroundWidget {
                             StyledText {
                                 font.pixelSize: Appearance.font.pixelSize.smaller
                                 color: Appearance.colors.colSubtext
-                                text: `${root.editingText.trim().length} chars`
+                                text: Translation.tr("%1 chars").arg(root.editingText.trim().length)
                             }
 
                             Item { Layout.fillWidth: true }
@@ -481,7 +481,7 @@ AbstractBackgroundWidget {
                             StyledText {
                                 font.pixelSize: Appearance.font.pixelSize.smaller
                                 color: Appearance.colors.colSubtext
-                                text: `${root.editingText.trim().split(/\s+/).filter(Boolean).length} words`
+                                text: Translation.tr("%1 words").arg(root.editingText.trim().split(/\s+/).filter(Boolean).length)
                             }
                         }
                     }

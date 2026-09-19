@@ -57,6 +57,16 @@ AbstractBackgroundWidget {
     }
 
     property int monthShift: 0
+    readonly property var currentLocale: Qt.locale(Translation.languageCode)
+    readonly property var dayNames: [
+        Translation.tr("Mo"),
+        Translation.tr("Tu"),
+        Translation.tr("We"),
+        Translation.tr("Th"),
+        Translation.tr("Fr"),
+        Translation.tr("Sa"),
+        Translation.tr("Su")
+    ]
     readonly property var today: new Date()
 
     property var viewingDate: {
@@ -195,13 +205,13 @@ AbstractBackgroundWidget {
                             anchors.centerIn: parent
                             spacing: 4
                             StyledText {
-                                text: root.today.toLocaleDateString(Qt.locale(), "MMM").toUpperCase()
+                                text: root.today.toLocaleDateString(root.currentLocale, "MMM").toUpperCase()
                                 font.pixelSize: Appearance.font.pixelSize.normal
                                 font.weight: Font.Bold
                                 color: Appearance.colors.colOnPrimary
                             }
                             StyledText {
-                                text: root.today.toLocaleDateString(Qt.locale(), "ddd").toUpperCase()
+                                text: root.today.toLocaleDateString(root.currentLocale, "ddd").toUpperCase()
                                 font.pixelSize: Appearance.font.pixelSize.normal
                                 font.weight: Font.Bold
                                 color: Appearance.colors.colOnPrimary
@@ -243,7 +253,7 @@ AbstractBackgroundWidget {
                     StyledText {
                         id: monthText
                         anchors.centerIn: parent
-                        text: root.today.toLocaleDateString(Qt.locale(), "MMMM yyyy")
+                        text: root.today.toLocaleDateString(root.currentLocale, "MMMM yyyy")
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Bold
                         color: Appearance.colors.colOnPrimary
@@ -258,7 +268,7 @@ AbstractBackgroundWidget {
                     Layout.topMargin: 4
 
                     Repeater {
-                        model: ["Mo","Tu","We","Th","Fr","Sa","Su"]
+                        model: root.dayNames
                         delegate: Item {
                             implicitWidth: (card.implicitWidth - 28) / 7
                             implicitHeight: 20
@@ -321,7 +331,7 @@ AbstractBackgroundWidget {
                         font.pixelSize: Appearance.font.pixelSize.normal
                         font.weight: Font.Medium
                         color: Appearance.colors.colOnPrimaryContainer
-                        text: root.viewingDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")
+                        text: root.viewingDate.toLocaleDateString(root.currentLocale, "MMMM yyyy")
                     }
 
                     Rectangle {
@@ -365,7 +375,7 @@ AbstractBackgroundWidget {
                     Layout.alignment: Qt.AlignHCenter
                     spacing: 4
                     Repeater {
-                        model: ["Mo","Tu","We","Th","Fr","Sa","Su"]
+                        model: root.dayNames
                         delegate: StyledText {
                             Layout.preferredWidth: 28
                             horizontalAlignment: Text.AlignHCenter
@@ -436,14 +446,14 @@ AbstractBackgroundWidget {
                     Item { Layout.fillHeight: true }
 
                     StyledText {
-                        text: root.today.toLocaleDateString(Qt.locale(), "MMMM").toUpperCase()
+                        text: root.today.toLocaleDateString(root.currentLocale, "MMMM").toUpperCase()
                         font.pixelSize: Appearance.font.pixelSize.normal
                         font.weight: Font.Bold
                         color: Appearance.colors.colOnPrimaryContainer
                         opacity: 0.6
                     }
                     StyledText {
-                        text: root.today.toLocaleDateString(Qt.locale(), "dddd")
+                        text: root.today.toLocaleDateString(root.currentLocale, "dddd")
                         font.pixelSize: Appearance.font.pixelSize.larger
                         font.weight: Font.DemiBold
                         color: Appearance.colors.colOnPrimaryContainer
@@ -473,11 +483,13 @@ AbstractBackgroundWidget {
                             Layout.topMargin: 10
                             spacing: 4
                             Repeater {
-                                model: ["Mo","Tu","We","Th","Fr","Sa","Su"]
+                                model: root.dayNames
                                 delegate: StyledText {
-                                    Layout.preferredWidth: 24
+                                    Layout.preferredWidth: 28
                                     horizontalAlignment: Text.AlignHCenter
                                     font.pixelSize: Appearance.font.pixelSize.smaller
+                                    fontSizeMode: Text.Fit
+                                    minimumPixelSize: 8
                                     font.weight: Font.Bold
                                     color: Appearance.colors.colOnPrimaryContainer
                                     opacity: 0.6

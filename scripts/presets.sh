@@ -148,7 +148,16 @@ case "$action" in
         jq -e . "$preset_file" > /dev/null 2>&1 || die "Preset is not valid JSON: '$name'"
         tmp=$(mktemp)
         jq "$BLACKLIST_FILTER" "$preset_file" > "$tmp" || die "Failed to parse preset '$name'"
-        jq -s '.[0] * .[1] | del(._presetMeta)' "$CONFIG_FILE" "$tmp" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE" \
+        # When preset has background.widgets, replace it entirely instead of deep-merging.
+        # This ensures widgets not present in the preset get their 'enable' flag reset.
+        # For keys outside background.widgets, normal deep merge is fine.
+        jq -s '
+          (.[1].background.widgets // null) as $pw |
+          if $pw != null then
+            .[0].background.widgets |= (to_entries | map(if .value | type == "object" then .value.enable = false else . end) | from_entries)
+          else . end |
+          .[0] * .[1] | del(._presetMeta)
+        ' "$CONFIG_FILE" "$tmp" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE" \
             || { rm -f "$tmp"; die "Failed to apply preset '$name'"; }
         rm -f "$tmp"
         "$SWITCHWALL" --noswitch || true

@@ -39,6 +39,7 @@ AbstractBackgroundWidget {
         implicitHeight: root.cardHeight
         radius: Appearance.rounding?.verylarge ?? 30
         color: timerCard.bgColor
+        clip: true
 
         StyledRectangularShadow {
             target: timerCard
@@ -98,28 +99,37 @@ AbstractBackgroundWidget {
             Item { Layout.fillHeight: true }
 
             ColumnLayout {
+                Layout.fillWidth: true
                 Layout.leftMargin: 2
-                Layout.topMargin: -40
                 spacing: -4
+
                 StyledText {
+                    Layout.fillWidth: true
                     text: timerCard.value
-                    font.pixelSize: Appearance.font.pixelSize.large
+                    font.pixelSize: Appearance.font.pixelSize.hugeass
                     font.weight: Font.Bold
                     font.features: { "tnum": 1 }
                     color: Appearance.colors.colOnPrimaryContainer
+                    fontSizeMode: Text.HorizontalFit
+                    minimumPixelSize: Appearance.font.pixelSize.smallest
                 }
 
                 StyledText {
+                    Layout.fillWidth: true
                     text: timerCard.label
                     font.pixelSize: Appearance.font.pixelSize.small
+                    fontSizeMode: Text.Fit
+                    minimumPixelSize: 10
                     color: Appearance.colors.colOnPrimaryContainer
                     opacity: 0.6
+                    elide: Text.ElideRight
                 }
             }
 
             Item {
                 id: extraSlot
                 Layout.fillWidth: true
+                visible: children.length > 0
                 Layout.preferredHeight: children.length > 0 ? 22 : 0
                 Layout.topMargin: children.length > 0 ? 6 : 0
             }
@@ -140,7 +150,7 @@ AbstractBackgroundWidget {
         TimerCard {
             icon: TimerService.pomodoroBreak ? "coffee" : "visibility"
             value: TimerService.formatSeconds(TimerService.pomodoroSecondsLeft)
-            label: TimerService.pomodoroBreak ? "Break" : "Focus"
+            label: TimerService.pomodoroBreak ? Translation.tr("Break") : Translation.tr("Focus")
             running: TimerService.pomodoroRunning
             bgColor: Appearance.colors.colTertiaryContainer
             shapeColor: Appearance.colors.colTertiary
@@ -153,7 +163,7 @@ AbstractBackgroundWidget {
         TimerCard {
             icon: "timer"
             value: TimerService.formatSeconds(TimerService.stopwatchTime / 100)
-            label: "Stopwatch"
+            label: Translation.tr("Stopwatch")
             running: TimerService.stopwatchRunning
             shape: MaterialShape.Shape.Sunny
             bgColor: Appearance.colors.colSecondaryContainer
@@ -166,7 +176,7 @@ AbstractBackgroundWidget {
         TimerCard {
             icon: "hourglass_top"
             value: TimerService.formatSeconds(TimerService.countdownSecondsLeft)
-            label: "Countdown"
+            label: Translation.tr("Countdown")
             running: TimerService.countdownRunning
             shape: MaterialShape.Shape.Bun
             onToggle: () => TimerService.toggleCountdown()

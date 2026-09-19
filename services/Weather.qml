@@ -7,6 +7,7 @@ import QtQuick
 import QtPositioning
 
 import qs.modules.common
+import qs.services
 
 Singleton {
     id: root
@@ -112,6 +113,16 @@ Singleton {
 
         url += `&units=${units}`
         url += `&appid=${apiKey}`
+
+        // Add language parameter for localized weather descriptions
+        let locale = Translation.languageCode || ""
+        if (locale && !locale.startsWith("en")) {
+            let langCode = locale.split("_")[0].toLowerCase()
+            // Chinese variants need full code (zh_cn, zh_tw)
+            if (langCode === "zh" && locale.length >= 5)
+                langCode = locale.substring(0, 5).toLowerCase().replace("_", "_")
+            url += `&lang=${langCode}`
+        }
 
         let command = `curl -s "${url}"`
 

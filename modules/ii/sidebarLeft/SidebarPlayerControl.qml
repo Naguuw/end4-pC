@@ -242,7 +242,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
-                        text: root.player?.trackArtist || "Something"
+                        text: root.player?.trackArtist || Translation.tr("Something")
 
                         Behavior on text {
                             SequentialAnimation {

@@ -21,7 +21,7 @@ Item {
 
     // Configuration
     property int paddingWeeks: 2 // 1 should be sufficient with proper clipping and no padding
-    property var locale: Qt.locale() // Should be of type Locale but QML is being funny
+    property var locale: Qt.locale(Translation.languageCode) // Should be of type Locale but QML is being funny
 
     // Scrolling
     function scrollMonthsAndSnap(x) { // Scroll x months and snap to month
