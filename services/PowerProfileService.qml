@@ -34,7 +34,8 @@ Singleton {
 
     function setProfile(profile) {
         root.activeProfile = profile
-        Quickshell.execDetached([Directories.powerProfileScriptPath, profile])
+        applyProc.command = [Directories.powerProfileScriptPath, profile]
+        applyProc.running = true
     }
 
     function cycle() {
@@ -50,14 +51,30 @@ Singleton {
         root.setProfile(nextProfile)
     }
 
-    Component.onCompleted: {
-        Quickshell.exec([Directories.powerProfileScriptPath, "get"], (output) => {
-            let p = output.trim()
-            if (p === "power-saver" || p === "powersave" || p === "eco" || p === "balanced" || p === "performance") {
-                let normalized = (p === "eco" || p === "powersave") ? "power-saver" : p
-                root.activeProfile = normalized
-                root.setProfile(normalized)
+    // Process to apply a profile (set command dynamically before running)
+    Process {
+        id: applyProc
+        command: ["true"]
+    }
+
+    // Process to read saved profile on startup
+    Process {
+        id: getProc
+        command: [Directories.powerProfileScriptPath, "get"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let p = text.trim()
+                if (p === "power-saver" || p === "powersave" || p === "eco" || p === "balanced" || p === "performance") {
+                    let normalized = (p === "eco" || p === "powersave") ? "power-saver" : p
+                    root.activeProfile = normalized
+                    // Re-apply to ensure system state matches saved profile
+                    root.setProfile(normalized)
+                }
             }
-        })
+        }
+    }
+
+    Component.onCompleted: {
+        getProc.running = true
     }
 }
