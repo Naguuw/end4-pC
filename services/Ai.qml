@@ -313,6 +313,32 @@ Singleton {
             "key_get_description": Translation.tr("**Instructions**: Log into Mistral account, go to Keys on the sidebar, click Create new key"),
             "api_format": "mistral",
         }),
+        "glm-4.5-flash": aiModelComponent.createObject(this, {
+            "name": "GLM 4.5 Flash",
+            "icon": "spark-symbolic",
+            "description": Translation.tr("Online | Z.ai GLM model via OpenAI-compatible API"),
+            "homepage": "https://z.ai",
+            "endpoint": "https://api.z.ai/api/paas/v4/chat/completions",
+            "model": "glm-4.5-flash",
+            "requires_key": true,
+            "key_id": "zai",
+            "key_get_link": "https://z.ai/manage-apikey/apikey-list",
+            "key_get_description": Translation.tr("**Instructions**: Get API key from Z.ai console"),
+            "api_format": "openai",
+        }),
+        "glm-4.7-flash": aiModelComponent.createObject(this, {
+            "name": "GLM 4.7 Flash",
+            "icon": "spark-symbolic",
+            "description": Translation.tr("Online | Z.ai GLM model via OpenAI-compatible API"),
+            "homepage": "https://z.ai",
+            "endpoint": "https://api.z.ai/api/paas/v4/chat/completions",
+            "model": "glm-4.7-flash",
+            "requires_key": true,
+            "key_id": "zai",
+            "key_get_link": "https://z.ai/manage-apikey/apikey-list",
+            "key_get_description": Translation.tr("**Instructions**: Get API key from Z.ai console"),
+            "api_format": "openai",
+        }),
     }
     property var modelList: Object.keys(root.models)
     property var currentModelId: Persistent.states?.ai?.model || modelList[0]
