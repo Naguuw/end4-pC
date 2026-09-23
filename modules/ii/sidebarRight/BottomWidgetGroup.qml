@@ -3,6 +3,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import qs.modules.ii.sidebarRight.calendar
+import qs.modules.ii.sidebarRight.schedule
 import qs.modules.ii.sidebarRight.todo
 import qs.modules.ii.sidebarRight.pomodoro
 import QtQuick
@@ -23,6 +24,12 @@ Rectangle {
             "name": Translation.tr("Calendar"),
             "icon": "calendar_month",
             "widget": "calendar/CalendarWidget.qml"
+        },
+        {
+            "type": "schedule",
+            "name": Translation.tr("Schedule"),
+            "icon": "school",
+            "widget": "schedule/ScheduleWidget.qml"
         },
         {
             "type": "todo",
@@ -206,9 +213,9 @@ Rectangle {
                 Connections {
                     target: root
                     function onSelectedTabChanged() {
-                        if (root.currentTab > root.previousIndex)
+                        if (root.selectedTab > root.previousIndex)
                             tabSwitchBehavior.animation.down = true;
-                        else if (root.currentTab < root.previousIndex)
+                        else if (root.selectedTab < root.previousIndex)
                             tabSwitchBehavior.animation.down = false;
                         tabStack.source = root.tabs[root.selectedTab].widget;
                     }

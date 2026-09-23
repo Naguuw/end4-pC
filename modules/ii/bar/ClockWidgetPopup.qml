@@ -18,10 +18,13 @@ StyledPopup {
         spacing: 8
         width: 340
 
-        Row {
+        Item {
             width: parent.width
+            implicitHeight: monthText.implicitHeight
 
             StyledText {
+                id: monthText
+                anchors.left: parent.left
                 text: Qt.locale(Translation.languageCode).toString(root.today, " MMMM")
                 font.pixelSize: Appearance.font.pixelSize.huge
                 font.weight: Font.Bold
@@ -29,6 +32,9 @@ StyledPopup {
             }
 
             StyledText {
+                id: yearText
+                anchors.left: monthText.right
+                anchors.baseline: monthText.baseline
                 text: " " + Qt.locale(Translation.languageCode).toString(root.today, "yyyy")
                 font.pixelSize: Appearance.font.pixelSize.huge
                 color: Appearance.colors.colOnSurfaceVariant

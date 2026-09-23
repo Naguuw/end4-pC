@@ -226,6 +226,18 @@ AbstractBackgroundWidget {
         return Math.max(0, startMinutes - nowMinutes)
     }
 
+    function cleanSingleLine(text) {
+        if (!text) return ""
+        return String(text)
+            .replace(/,\s*<br\s*\/?>/gi, ", ")
+            .replace(/<br\s*\/?>/gi, ", ")
+            .replace(/[\r\n]+/g, ", ")
+            .replace(/<[^>]*>/g, "")
+            .replace(/\s+/g, " ")
+            .replace(/,\s*,/g, ",")
+            .trim()
+    }
+
     Item {
         id: cardWrapper
         anchors.fill: parent
@@ -282,50 +294,64 @@ AbstractBackgroundWidget {
                 visible: root.mode === "list"
 
                 // Header
-                RowLayout {
+                Item {
                     Layout.fillWidth: true
-                    spacing: 8
+                    implicitHeight: 34
 
-                    MaterialShapeWrappedMaterialSymbol {
-                        shape: MaterialShape.Shape.Cookie12Sided
-                        color: Appearance.colors.colPrimary
-                        colSymbol: Appearance.colors.colOnPrimary
-                        text: "school"
-                        iconSize: 18
-                        fill: 1
-                        padding: 6
-                        implicitWidth: 34
-                        implicitHeight: 34
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: -3
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: Translation.tr("SCHEDULE")
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                            color: Appearance.colors.colPrimary
-                            opacity: 0.85
-                        }
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: root.dayNames[root.selectedDay] ?? "Monday"
-                            font.pixelSize: Appearance.font.pixelSize.normal + 1
-                            font.weight: Font.DemiBold
-                            color: Appearance.colors.colOnPrimaryContainer
-                            fontSizeMode: Text.Fit
-                            minimumPixelSize: Appearance.font.pixelSize.small
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    // Uniform circular action buttons (all 28x28)
                     RowLayout {
-                        Layout.alignment: Qt.AlignTop
+                        anchors {
+                            left: parent.left
+                            right: listActionButtons.left
+                            rightMargin: 6
+                            verticalCenter: parent.verticalCenter
+                        }
+                        spacing: 8
+
+                        MaterialShapeWrappedMaterialSymbol {
+                            shape: MaterialShape.Shape.Cookie12Sided
+                            color: Appearance.colors.colPrimary
+                            colSymbol: Appearance.colors.colOnPrimary
+                            text: "school"
+                            iconSize: 18
+                            fill: 1
+                            padding: 6
+                            implicitWidth: 34
+                            implicitHeight: 34
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: -3
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: Translation.tr("SCHEDULE")
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                                color: Appearance.colors.colPrimary
+                                opacity: 0.85
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: root.dayNames[root.selectedDay] ?? "Monday"
+                                font.pixelSize: Appearance.font.pixelSize.normal + 1
+                                font.weight: Font.DemiBold
+                                color: Appearance.colors.colOnPrimaryContainer
+                                fontSizeMode: Text.Fit
+                                minimumPixelSize: Appearance.font.pixelSize.small
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+
+                    // Uniform circular action buttons (all 28x28 docked to right)
+                    RowLayout {
+                        id: listActionButtons
+                        anchors {
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                        }
                         spacing: 4
 
                         // Prev day
@@ -658,7 +684,8 @@ AbstractBackgroundWidget {
                                             StyledText {
                                                 Layout.fillWidth: true
                                                 color: Appearance.colors.colOnPrimaryContainer
-                                                text: classCard.modelData.title || ""
+                                                text: root.cleanSingleLine(classCard.modelData.title || "")
+                                                textFormat: Text.PlainText
                                                 font.weight: Font.DemiBold
                                                 font.pixelSize: 12
                                                 elide: Text.ElideRight
@@ -723,7 +750,8 @@ AbstractBackgroundWidget {
                                                     Layout.fillWidth: true
                                                     font.pixelSize: 10
                                                     color: Appearance.colors.colSubtext
-                                                    text: classCard.modelData.room || ""
+                                                    text: root.cleanSingleLine(classCard.modelData.room || "")
+                                                    textFormat: Text.PlainText
                                                     elide: Text.ElideRight
                                                     maximumLineCount: 1
                                                 }
@@ -744,7 +772,8 @@ AbstractBackgroundWidget {
                                                     Layout.fillWidth: true
                                                     font.pixelSize: 10
                                                     color: Appearance.colors.colSubtext
-                                                    text: classCard.modelData.lecturer || ""
+                                                    text: root.cleanSingleLine(classCard.modelData.lecturer || "")
+                                                    textFormat: Text.PlainText
                                                     elide: Text.ElideRight
                                                     maximumLineCount: 1
                                                 }
@@ -784,130 +813,156 @@ AbstractBackgroundWidget {
                 visible: root.mode === "edit"
 
                 // Edit Header
-                RowLayout {
+                Item {
                     Layout.fillWidth: true
-                    spacing: 6
+                    implicitHeight: 28
 
-                    // Back button
-                    Rectangle {
-                        implicitWidth: 28
-                        implicitHeight: 28
-                        radius: 14
-                        color: backMouse.containsPress
-                            ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.7)
-                            : (backMouse.containsMouse
-                                ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.85)
-                                : "transparent")
-                        border.width: 1
-                        border.color: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.75)
+                    RowLayout {
+                        anchors {
+                            left: parent.left
+                            right: editActionButtons.left
+                            rightMargin: 6
+                            verticalCenter: parent.verticalCenter
+                        }
+                        spacing: 6
 
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "arrow_back"
-                            iconSize: 16
-                            color: Appearance.colors.colOnPrimaryContainer
+                        // Back button
+                        Rectangle {
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            radius: 14
+                            color: backMouse.containsPress
+                                ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.7)
+                                : (backMouse.containsMouse
+                                    ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.85)
+                                    : "transparent")
+                            border.width: 1
+                            border.color: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.75)
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "arrow_back"
+                                iconSize: 16
+                                color: Appearance.colors.colOnPrimaryContainer
+                            }
+
+                            MouseArea {
+                                id: backMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.toggleFlip()
+                            }
                         }
 
-                        MouseArea {
-                            id: backMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleFlip()
-                        }
-                    }
-
-                    // Mini Cookie Badge
-                    MaterialShapeWrappedMaterialSymbol {
-                        shape: MaterialShape.Shape.Cookie9Sided
-                        color: Appearance.colors.colPrimary
-                        colSymbol: Appearance.colors.colOnPrimary
-                        text: root.editingId ? "edit" : "add"
-                        iconSize: 14
-                        fill: 1
-                        padding: 4
-                        implicitWidth: 26
-                        implicitHeight: 26
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: -3
-
-                        StyledText {
-                            text: Translation.tr("CLASS DETAILS")
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
+                        // Mini Cookie Badge
+                        MaterialShapeWrappedMaterialSymbol {
+                            shape: MaterialShape.Shape.Cookie9Sided
                             color: Appearance.colors.colPrimary
-                            opacity: 0.85
+                            colSymbol: Appearance.colors.colOnPrimary
+                            text: root.editingId ? "edit" : "add"
+                            iconSize: 14
+                            fill: 1
+                            padding: 4
+                            implicitWidth: 26
+                            implicitHeight: 26
                         }
 
-                        StyledText {
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            font.weight: Font.DemiBold
-                            color: Appearance.colors.colOnPrimaryContainer
-                            text: root.editingId ? Translation.tr("Edit Class") : Translation.tr("New Class")
-                        }
-                    }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: -3
 
-                    // Delete button (if editing)
-                    Rectangle {
-                        visible: root.editingId !== null
-                        implicitWidth: 28
-                        implicitHeight: 28
-                        radius: 14
-                        color: delMouse.containsPress
-                            ? ColorUtils.transparentize(Appearance.colors.colError, 0.7)
-                            : (delMouse.containsMouse
-                                ? ColorUtils.transparentize(Appearance.colors.colError, 0.85)
-                                : "transparent")
-                        border.width: 1
-                        border.color: ColorUtils.transparentize(Appearance.colors.colError, 0.75)
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: Translation.tr("CLASS DETAILS")
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                                color: Appearance.colors.colPrimary
+                                opacity: 0.85
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
 
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "delete"
-                            iconSize: 16
-                            color: Appearance.colors.colError
-                        }
-
-                        MouseArea {
-                            id: delMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.deleteCurrentAndBack()
+                            StyledText {
+                                Layout.fillWidth: true
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                font.weight: Font.DemiBold
+                                color: Appearance.colors.colOnPrimaryContainer
+                                text: root.editingId ? Translation.tr("Edit Class") : Translation.tr("New Class")
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
                         }
                     }
 
-                    // Save button
-                    Rectangle {
-                        implicitWidth: 28
-                        implicitHeight: 28
-                        radius: 14
-                        opacity: root.isFormValid ? 1 : 0.4
-                        color: !root.isFormValid
-                            ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.85)
-                            : (saveMouse.containsPress
-                                ? Appearance.colors.colPrimaryActive
-                                : (saveMouse.containsMouse
-                                    ? Appearance.colors.colPrimaryHover
-                                    : Appearance.colors.colPrimary))
+                    // Delete & Save Action Buttons (docked to top right)
+                    RowLayout {
+                        id: editActionButtons
+                        anchors {
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                        }
+                        spacing: 4
 
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "check"
-                            iconSize: 16
-                            color: root.isFormValid ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+                        // Delete button (if editing)
+                        Rectangle {
+                            visible: root.editingId !== null
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            radius: 14
+                            color: delMouse.containsPress
+                                ? ColorUtils.transparentize(Appearance.colors.colError, 0.7)
+                                : (delMouse.containsMouse
+                                    ? ColorUtils.transparentize(Appearance.colors.colError, 0.85)
+                                    : "transparent")
+                            border.width: 1
+                            border.color: ColorUtils.transparentize(Appearance.colors.colError, 0.75)
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "delete"
+                                iconSize: 16
+                                color: Appearance.colors.colError
+                            }
+
+                            MouseArea {
+                                id: delMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.deleteCurrentAndBack()
+                            }
                         }
 
-                        MouseArea {
-                            id: saveMouse
-                            anchors.fill: parent
-                            enabled: root.isFormValid
-                            hoverEnabled: true
-                            cursorShape: root.isFormValid ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: root.saveAndBack()
+                        // Save button
+                        Rectangle {
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            radius: 14
+                            opacity: root.isFormValid ? 1 : 0.4
+                            color: !root.isFormValid
+                                ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.85)
+                                : (saveMouse.containsPress
+                                    ? Appearance.colors.colPrimaryActive
+                                    : (saveMouse.containsMouse
+                                        ? Appearance.colors.colPrimaryHover
+                                        : Appearance.colors.colPrimary))
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "check"
+                                iconSize: 16
+                                color: root.isFormValid ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+                            }
+
+                            MouseArea {
+                                id: saveMouse
+                                anchors.fill: parent
+                                enabled: root.isFormValid
+                                hoverEnabled: true
+                                cursorShape: root.isFormValid ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: root.saveAndBack()
+                            }
                         }
                     }
                 }
