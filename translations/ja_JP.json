@@ -471,5 +471,12 @@
     "Live Wallpaper": "ライブ壁紙",
     "Disk": "ディスク",
     "Something": "何か",
-    "System Uptime": "システム稼働時間"
+    "System Uptime": "システム稼働時間",
+    "Schedule": "時間割",
+    "SCHEDULE": "時間割",
+    "Edit Class": "授業を編集",
+    "New Class": "授業を追加",
+    "CLASS DETAILS": "授業の詳細",
+    "No Classes Today": "今日の授業はありません",
+    "Free day! Tap + to add schedule": "休講日！＋をタップして時間割を追加"
 }
