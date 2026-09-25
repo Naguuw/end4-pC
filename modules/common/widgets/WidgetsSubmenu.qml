@@ -26,6 +26,7 @@ Item {
         { key: "timers",      icon: "timer",              name: Translation.tr("Timers") },
         { key: "todo",        icon: "add_task",           name: Translation.tr("To-Do") },
         { key: "schedule",    icon: "event_note",         name: Translation.tr("Schedule") },
+        { key: "sticker",     icon: "sticker",            name: Translation.tr("Sticker") },
     ]
 
     Rectangle {
@@ -46,7 +47,13 @@ Item {
             checked: Config.options.background.widgetsLocked
             onCheckedChanged: Config.options.background.widgetsLocked = checked
         }
-
+        ConfigSwitch {
+            Layout.fillWidth: true
+            buttonIcon: "shadow"
+            text: Translation.tr("Shadow")
+            checked: Config.options.background.widgets.shadow 
+            onCheckedChanged: Config.options.background.widgets.shadow = checked
+        }
         ConfigSwitch {
             Layout.fillWidth: true
             buttonIcon: "blur_on"

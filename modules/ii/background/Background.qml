@@ -82,6 +82,11 @@ Variants {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
+        // Decode wallpapers at screen resolution. Uploading a 5K+ image and its mipmaps to the GPU
+        // stalls the render thread, and the GUI thread with it while an animation is running.
+        readonly property size wallpaperSourceSize: Qt.size(Math.ceil(modelData.width * modelData.devicePixelRatio),
+            Math.ceil(modelData.height * modelData.devicePixelRatio))
+
         property real transitionProgress: 1.0
         property bool transitionPending: false
 
@@ -145,7 +150,7 @@ Variants {
                 bgRoot.transitionProgress = 1.0
                 return
             }
-            if (bgRoot.wallpaperAnimation === "") {
+            if (bgRoot.wallpaperAnimation === "" || GlobalStates.startupLockPending) {
                 bgRoot.transitionPending = false
                 wallpaper.source = wallpaperPath
                 previousWallpaper.source = wallpaperPath
@@ -223,7 +228,7 @@ Variants {
 
         Item {
             anchors.fill: parent
-            opacity: bgRoot.hiddenForFullscreen ? 0 : 1
+            opacity: (bgRoot.hiddenForFullscreen || GlobalStates.startupLockPending) ? 0 : 1
             enabled: !bgRoot.hiddenForFullscreen
             
             Behavior on opacity {
@@ -398,7 +403,7 @@ Variants {
                         id: blurLayer
                         anchors.fill: parent
                         source: bgRoot.wallpaperAnimation === "" || bgRoot.transitionProgress >= 1.0 ? wallpaper : transitionEffect
-                        radius: blurRoot.blurRadius
+                        radius: Config.options.background.blurRadius
 
                         layer.enabled: !bgRoot.blurFullScreen
                         layer.effect: OpacityMask {

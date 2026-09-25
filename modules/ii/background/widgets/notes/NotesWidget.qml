@@ -104,7 +104,10 @@ AbstractBackgroundWidget {
             }
         }
 
-        StyledDropShadow { target: contentRect }
+        StyledDropShadow { 
+            target: contentRect
+            visible: Config.options.background.widgets.shadow
+        }
 
         Rectangle {
             id: contentRect

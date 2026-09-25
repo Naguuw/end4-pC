@@ -31,8 +31,6 @@ RowLayout {
     Layout.rightMargin: 8
 
     RowLayout {
-        Layout.fillWidth: true
-        Layout.preferredWidth: 0
         spacing: 10
         visible: root.text !== ""
         OptionalMaterialSymbol {
@@ -42,7 +40,7 @@ RowLayout {
         StyledText {
             id: labelWidget
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
+            elide: Text.ElideRight
             text: root.text
             color: Appearance.colors.colOnSecondaryContainer
             opacity: root.enabled ? 1 : 0.4
@@ -51,6 +49,7 @@ RowLayout {
 
     Flow {
         id: buttonsFlow
+        Layout.fillWidth: !root.text
         Layout.alignment: Qt.AlignRight
         spacing: 2
 

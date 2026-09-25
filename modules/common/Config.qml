@@ -201,6 +201,18 @@ Singleton {
                     property int gapsOut: 5
                     property string layout: "dwindle"
                     property string specialLayout: "scrolling"
+                    property JsonObject borderColor: JsonObject {
+                        property bool enable: false
+                        property string activeRole: "layer0Border"
+                        property string inactiveRole: "layer0Border"
+                        property real activeOpacity: 0.47
+                        property real inactiveOpacity: 0.2
+                    }
+                }
+                property JsonObject idle: JsonObject {
+                    property int lock: 300
+                    property int screenOff: 600
+                    property int suspend: 10800
                 }
                 property JsonObject input: JsonObject {
                     property string kbLayout: "us"
@@ -233,6 +245,7 @@ Singleton {
                 property string style: "default" // default - minimal
                 property real borderSize: 1
                 property string borderColor: "layer0Border"
+                property list<string> collapsedSections: []
             }
 
             property JsonObject background: JsonObject {
@@ -240,12 +253,14 @@ Singleton {
                 property bool widgetsLocked: false
                 property bool showGrid: true
                 property bool showBlur: false
+                property real blurRadius: 32
                 property string splitRatio: "100" // 25 50 100
                 property string splitSide: "left"
                 property bool showSnapLines: true
                 property JsonObject widgets: JsonObject {
                     property bool blurWidgets: false
                     property real blurRadius: 32
+                    property bool shadow: true
                     property JsonObject clock: JsonObject {
                         property bool enable: true
                         property bool showOnlyWhenLocked: false
@@ -369,6 +384,11 @@ Singleton {
                         property real x: 0
                         property real y: 0
                         property real z: -1000
+                        property string style: "bars" // "bars", "mirror", "aurora", "ring", "dots"
+                        property string colorSource: "theme" // "theme", "cover"
+                        property real sensitivity: 1
+                        property int height: 260 // mirror, aurora and dots
+                        property int ringSize: 380
                     }
 
                     property JsonObject customImage: JsonObject {
@@ -380,6 +400,20 @@ Singleton {
                         property string path: ""
                         property string shape: "Cookie4Sided"
                         property real size: 200
+                    }
+
+                    property JsonObject sticker: JsonObject {
+                        property bool enable: false
+                        property list<var> items: [] // if someone sees this and wants to add more stickers, make a PR too lazy 
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                        property string path: ""
+                        property real size: 200
+                        property real rotation: 0
+                        property string outlineColor: "#ffffff" //dont work =(
+                        property real outlineWidth: 8
                     }
 
                     property JsonObject resources: JsonObject {
@@ -411,6 +445,20 @@ Singleton {
                         property real y: 500
                         property real z: 0
                         property string sizeMode: "1x3" 
+                    }
+
+                    property JsonObject customText: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 300
+                        property real z: 0
+                        property string content: "Hello world"
+                        property string fontFamily: "Caveat"
+                        property int fontSize: 72
+                        property string color: "" // "" = automatic, otherwise an Appearance color name
+                        property string alignment: "center" // "left", "center", "right"
+                        property bool shadow: true
                     }
                 }
                 property list<string> screenList: [] 
@@ -478,6 +526,8 @@ Singleton {
                 property JsonObject dynamicIsland: JsonObject {
                     property string visualizerStyle: "dots" // "dots", "wave", "none"
                     property bool showMediaControls: false
+                    property string leftWidget: "none"
+                    property string rightWidget: "none"
                 }
                 property JsonObject divider: JsonObject {
                     property string style: "rect" // rect - dot - space
@@ -526,6 +576,7 @@ Singleton {
                     }
                 }
                 property JsonObject tooltips: JsonObject {
+                    property bool enable: true
                     property bool clickToShow: false
                 }
                 property JsonObject media: JsonObject {
@@ -534,6 +585,7 @@ Singleton {
                     property bool onlyTitle: false
                     property int maxWidth: 280
                     property int minWidth: 100
+                    property bool showLyrics: false
                 }
             }
 

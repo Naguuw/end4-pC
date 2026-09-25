@@ -44,6 +44,7 @@ AbstractBackgroundWidget {
         StyledRectangularShadow {
             target: timerCard
             z: -2
+            visible: Config.options.background.widgets.shadow
         }
 
         FastBlurred {
